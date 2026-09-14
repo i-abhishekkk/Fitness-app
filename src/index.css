@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-sans: 'Syne', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --color-bg: #08090b;
+  --color-bg-2: #0e0f12;
+  --color-bg-3: #15161a;
+  --color-bg-4: #1c1d22;
+  --color-bg-5: #24252b;
+
+  --color-text: #f2efe9;
+  --color-text-2: #9a988f;
+  --color-text-3: #58564f;
+
+  --color-border: rgba(255,255,255,0.07);
+  --color-border-2: rgba(255,255,255,0.12);
+
+  --color-accent: #ff3d2e;
+  --color-accent-dim: rgba(255,61,46,0.12);
+  --color-amber: #ffb020;
+  --color-amber-dim: rgba(255,176,32,0.12);
+  --color-green: #00e87a;
+  --color-green-dim: rgba(0,232,122,0.1);
+  --color-blue: #4d9eff;
+  --color-blue-dim: rgba(77,158,255,0.1);
+  --color-purple: #c084fc;
+  --color-purple-dim: rgba(192,132,252,0.1);
+  --color-teal: #2dd4bf;
+  --color-teal-dim: rgba(45,212,191,0.1);
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* film-grain texture, matches the legacy app's tactile feel */
+.grain::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 999;
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+}
+
+::selection {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
