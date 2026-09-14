@@ -1,6 +1,8 @@
-import { useState } from 'react'
-import { Card, CardTitle, Segmented, Callout } from '../components/ui'
-import { PlusIcon } from '../components/icons'
+import { useState, type ChangeEvent } from 'react'
+import { motion } from 'motion/react'
+import { GlassCard, SectionTitle, Segmented, Callout, TextField, TextAreaField, SelectField, Button } from '../components/ui'
+import { CountUp } from '../components/CountUp'
+import { PlusIcon, XIcon, MoonIcon, TargetIcon, DownloadIcon, TrashIcon, CheckIcon } from '../components/icons'
 import { useStore } from '../store/StoreContext'
 import { HABITS } from '../data/plan'
 import type { SessionEntry } from '../store/appState'
@@ -15,7 +17,7 @@ const DAY_OPTIONS = [
 export default function Tracker() {
   const [top, setTop] = useState<Top>('session')
   return (
-    <div className="px-3 pb-4 pt-3">
+    <div className="px-4 pb-4">
       <Segmented
         value={top}
         onChange={setTop}
@@ -32,20 +34,6 @@ export default function Tracker() {
       {top === 'sleep' && <Sleep />}
       {top === 'habits' && <Habits />}
       {top === 'data' && <DataPanel />}
-    </div>
-  )
-}
-
-function NumInput({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-  return (
-    <div>
-      <div className="mb-1 text-[10px] font-semibold text-[var(--color-text-3)]">{label}</div>
-      <input
-        type="number"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-md border border-[var(--color-border-2)] bg-[var(--color-bg-3)] px-2.5 py-2 font-[var(--font-mono)] text-sm outline-none focus:border-[var(--color-accent)]"
-      />
     </div>
   )
 }
@@ -89,69 +77,63 @@ function LogSession() {
   }
 
   return (
-    <Card>
-      <CardTitle>Log Workout Session</CardTitle>
-      <select
-        value={day}
-        onChange={(e) => setDay(e.target.value)}
-        className="mb-3 w-full rounded-md border border-[var(--color-border-2)] bg-[var(--color-bg-3)] px-2.5 py-2 text-[12px] outline-none focus:border-[var(--color-accent)]"
-      >
-        {DAY_OPTIONS.map((o) => <option key={o}>{o}</option>)}
-      </select>
+    <GlassCard glow="var(--color-accent)">
+      <SectionTitle>Log Workout Session</SectionTitle>
+      <div className="mb-4">
+        <SelectField label="Session" value={day} onChange={setDay} options={DAY_OPTIONS} />
+      </div>
 
-      <div className="mb-1.5 mt-3 font-[var(--font-mono)] text-[9px] font-bold uppercase tracking-[1.2px] text-[var(--color-text-3)]">
+      <div className="mb-2 font-[var(--font-mono)] text-[10px] font-bold uppercase tracking-[1.5px] text-[var(--color-text-3)]">
         Skills this session → auto-updates Aura
       </div>
-      <div className="mb-3 grid grid-cols-2 gap-2.5">
-        <NumInput label="HS Hold (sec)" value={hs} onChange={setHs} />
-        <NumInput label="Pull-ups (reps)" value={pu} onChange={setPu} />
-        <NumInput label="Dips (reps)" value={mu} onChange={setMu} />
-        <NumInput label="Stair sets done" value={cv} onChange={setCv} />
-        <NumInput label="C2B Pull-ups (reps)" value={c2b} onChange={setC2b} />
-        <NumInput label="Scapular Pull-ups (reps)" value={scap} onChange={setScap} />
+      <div className="mb-4 grid grid-cols-2 gap-2.5">
+        <TextField type="number" label="HS Hold (sec)" value={hs} onChange={(e) => setHs(e.target.value)} />
+        <TextField type="number" label="Pull-ups (reps)" value={pu} onChange={(e) => setPu(e.target.value)} />
+        <TextField type="number" label="Dips (reps)" value={mu} onChange={(e) => setMu(e.target.value)} />
+        <TextField type="number" label="Stair sets done" value={cv} onChange={(e) => setCv(e.target.value)} />
+        <TextField type="number" label="C2B Pull-ups (reps)" value={c2b} onChange={(e) => setC2b(e.target.value)} />
+        <TextField type="number" label="Scapular Pull-ups (reps)" value={scap} onChange={(e) => setScap(e.target.value)} />
       </div>
 
-      <div className="mb-1.5 font-[var(--font-mono)] text-[9px] font-bold uppercase tracking-[1.2px] text-[var(--color-text-3)]">
+      <div className="mb-2 font-[var(--font-mono)] text-[10px] font-bold uppercase tracking-[1.5px] text-[var(--color-text-3)]">
         Exercise Log
       </div>
       {exercises.map((ex, i) => (
-        <div key={i} className="mb-1.5 flex gap-1.5">
+        <div key={i} className="mb-2 flex gap-1.5">
           <input
             value={ex.name}
             onChange={(e) => updateEx(i, 'name', e.target.value)}
             placeholder="Exercise"
-            className="flex-1 rounded-md border border-[var(--color-border-2)] bg-[var(--color-bg-3)] px-2 py-1.5 text-[11px] outline-none focus:border-[var(--color-accent)]"
+            className="flex-1 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 text-[11.5px] outline-none focus:border-[var(--color-accent)]"
           />
           <input
             value={ex.sets}
             onChange={(e) => updateEx(i, 'sets', e.target.value)}
             placeholder="4x8 @ 60kg"
-            className="w-28 rounded-md border border-[var(--color-border-2)] bg-[var(--color-bg-3)] px-2 py-1.5 text-[11px] outline-none focus:border-[var(--color-accent)]"
+            className="w-28 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 text-[11.5px] outline-none focus:border-[var(--color-accent)]"
           />
-          <button onClick={() => removeEx(i)} className="rounded-md border border-[var(--color-border-2)] px-2 text-[var(--color-text-3)]">×</button>
+          <button onClick={() => removeEx(i)} className="grid shrink-0 place-items-center rounded-lg border border-white/10 px-2 text-[var(--color-text-3)] transition-colors hover:bg-white/5">
+            <XIcon width={13} height={13} />
+          </button>
         </div>
       ))}
-      <button
-        onClick={addExRow}
-        className="mb-2.5 flex w-full items-center justify-center gap-1.5 rounded-md border border-[var(--color-border-2)] py-2 text-[11px] font-semibold text-[var(--color-text-2)] active:scale-95 transition-transform"
-      >
-        <PlusIcon width={13} height={13} /> Add Exercise
-      </button>
+      <div className="mb-4">
+        <Button variant="ghost" full onClick={addExRow}>
+          <PlusIcon width={13} height={13} /> Add Exercise
+        </Button>
+      </div>
 
-      <div className="mb-1 text-[10px] font-semibold text-[var(--color-text-3)]">Session Notes</div>
-      <textarea
-        value={notes}
-        onChange={(e) => setNotes(e.target.value)}
-        placeholder="How did it feel? PRs? Issues?"
-        className="mb-3 min-h-[60px] w-full resize-y rounded-md border border-[var(--color-border-2)] bg-[var(--color-bg-3)] px-2.5 py-2 text-[12px] outline-none focus:border-[var(--color-accent)]"
-      />
-      <button
-        onClick={save}
-        className="w-full rounded-md bg-[var(--color-accent)] py-3 text-[13px] font-extrabold tracking-wide text-white active:opacity-80 transition-opacity"
-      >
-        SAVE SESSION + SYNC AURA
-      </button>
-    </Card>
+      <div className="mb-4">
+        <TextAreaField
+          label="Session Notes"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="How did it feel? PRs? Issues?"
+          className="min-h-[64px]"
+        />
+      </div>
+      <Button full onClick={save}>Save Session + Sync Aura</Button>
+    </GlassCard>
   )
 }
 
@@ -159,33 +141,41 @@ function History() {
   const { state, setState } = useStore()
   const del = (id: string) => setState((s) => ({ ...s, sessions: s.sessions.filter((x) => x.id !== id) }))
   return (
-    <Card>
-      <CardTitle>
-        Sessions <span className="font-[var(--font-mono)] text-[var(--color-text-3)]">· {state.sessions.length} total</span>
-      </CardTitle>
+    <GlassCard>
+      <SectionTitle trailing={<span className="font-[var(--font-mono)] text-[10px] text-[var(--color-text-3)]">{state.sessions.length} total</span>}>
+        Sessions
+      </SectionTitle>
       {state.sessions.length === 0 && (
-        <div className="py-6 text-center text-[12px] text-[var(--color-text-3)]">No sessions logged yet.</div>
+        <div className="py-8 text-center text-[12.5px] text-[var(--color-text-3)]">No sessions logged yet.</div>
       )}
-      {state.sessions.map((s) => (
-        <div key={s.id} className="border-b border-[var(--color-border)] py-3 last:border-none">
+      {state.sessions.map((s, i) => (
+        <motion.div
+          key={s.id}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: i * 0.03 }}
+          className="border-b border-white/[0.06] py-3.5 last:border-none"
+        >
           <div className="flex items-center justify-between">
-            <span className="text-[12px] font-bold">{s.dayType}</span>
+            <span className="text-[12.5px] font-bold">{s.dayType}</span>
             <div className="flex items-center gap-2">
               <span className="font-[var(--font-mono)] text-[10px] text-[var(--color-text-3)]">
                 {new Date(s.date).toLocaleDateString()}
               </span>
-              <button onClick={() => del(s.id)} className="text-[var(--color-text-3)]">×</button>
+              <button onClick={() => del(s.id)} className="text-[var(--color-text-3)] transition-colors hover:text-[var(--color-accent)]">
+                <XIcon width={13} height={13} />
+              </button>
             </div>
           </div>
-          {s.exercises.map((ex, i) => (
-            <div key={i} className="mt-1 flex justify-between text-[11px] text-[var(--color-text-2)]">
+          {s.exercises.map((ex, ei) => (
+            <div key={ei} className="mt-1.5 flex justify-between text-[11.5px] text-[var(--color-text-2)]">
               <span>{ex.name}</span>
               <span className="font-[var(--font-mono)] text-[var(--color-text-3)]">{ex.sets}</span>
             </div>
           ))}
-        </div>
+        </motion.div>
       ))}
-    </Card>
+    </GlassCard>
   )
 }
 
@@ -194,8 +184,8 @@ function Sleep() {
   const [hrs, setHrs] = useState('')
   const [qual, setQual] = useState('')
   const last7 = state.sleep.slice(-7)
-  const avg = last7.length ? (last7.reduce((a, b) => a + b.hours, 0) / last7.length).toFixed(1) : '—'
-  const lastNight = state.sleep.at(-1)?.hours ?? '—'
+  const avg = last7.length ? Number((last7.reduce((a, b) => a + b.hours, 0) / last7.length).toFixed(1)) : 0
+  const lastNight = state.sleep.at(-1)?.hours ?? 0
 
   const log = () => {
     const h = parseFloat(hrs)
@@ -205,26 +195,24 @@ function Sleep() {
   }
 
   return (
-    <Card>
-      <CardTitle>😴 Sleep Log</CardTitle>
-      <div className="mb-3 grid grid-cols-2 gap-2.5">
-        <div className="rounded-md bg-[var(--color-bg-3)] p-2.5 text-center">
-          <div className="font-[var(--font-mono)] text-xl font-extrabold">{avg}</div>
-          <div className="text-[9px] text-[var(--color-text-3)]">7-DAY AVG</div>
+    <GlassCard glow="var(--color-purple)">
+      <SectionTitle icon={<MoonIcon width={14} height={14} />} color="var(--color-purple)">Sleep Log</SectionTitle>
+      <div className="mb-4 grid grid-cols-2 gap-2.5">
+        <div className="rounded-xl bg-white/[0.03] p-3 text-center">
+          <div className="font-[var(--font-mono)] text-xl font-extrabold"><CountUp value={avg} decimals={1} /></div>
+          <div className="mt-0.5 text-[9px] uppercase tracking-wide text-[var(--color-text-3)]">7-day avg</div>
         </div>
-        <div className="rounded-md bg-[var(--color-bg-3)] p-2.5 text-center">
-          <div className="font-[var(--font-mono)] text-xl font-extrabold">{lastNight}</div>
-          <div className="text-[9px] text-[var(--color-text-3)]">LAST NIGHT</div>
+        <div className="rounded-xl bg-white/[0.03] p-3 text-center">
+          <div className="font-[var(--font-mono)] text-xl font-extrabold"><CountUp value={lastNight} decimals={1} /></div>
+          <div className="mt-0.5 text-[9px] uppercase tracking-wide text-[var(--color-text-3)]">last night</div>
         </div>
       </div>
-      <div className="mb-3 grid grid-cols-2 gap-2.5">
-        <NumInput label="Hours slept" value={hrs} onChange={setHrs} />
-        <NumInput label="Quality (1-5)" value={qual} onChange={setQual} />
+      <div className="mb-4 grid grid-cols-2 gap-2.5">
+        <TextField type="number" label="Hours slept" value={hrs} onChange={(e) => setHrs(e.target.value)} />
+        <TextField type="number" label="Quality (1-5)" value={qual} onChange={(e) => setQual(e.target.value)} />
       </div>
-      <button onClick={log} className="w-full rounded-md bg-[var(--color-accent)] py-3 text-[13px] font-extrabold tracking-wide text-white active:opacity-80 transition-opacity">
-        LOG SLEEP
-      </button>
-    </Card>
+      <Button full onClick={log}>Log Sleep</Button>
+    </GlassCard>
   )
 }
 
@@ -232,8 +220,8 @@ function Habits() {
   const { state, setState } = useStore()
   const toggle = (key: string) => setState((s) => ({ ...s, habits: { ...s.habits, [key]: !s.habits[key] } }))
   return (
-    <Card>
-      <CardTitle>🎯 Daily Habits</CardTitle>
+    <GlassCard glow="var(--color-green)">
+      <SectionTitle icon={<TargetIcon width={14} height={14} />} color="var(--color-green)">Daily Habits</SectionTitle>
       <Callout kind="tip">Non-negotiables beyond training. Tap to mark done for today.</Callout>
       {HABITS.map((h) => {
         const done = !!state.habits[h.key]
@@ -241,21 +229,24 @@ function Habits() {
           <button
             key={h.key}
             onClick={() => toggle(h.key)}
-            className="flex w-full items-center gap-2.5 border-b border-[var(--color-border)] py-2.5 text-left last:border-none"
+            className="flex w-full items-center gap-3 border-b border-white/[0.06] py-3 text-left last:border-none"
           >
             <span className="text-lg">{h.icon}</span>
             <span className="flex-1">
               <div className={`text-[13px] font-semibold ${done ? 'text-[var(--color-text-3)] line-through' : ''}`}>{h.name}</div>
-              <div className="text-[10px] text-[var(--color-text-3)]">{h.sub}</div>
+              <div className="text-[10.5px] text-[var(--color-text-3)]">{h.sub}</div>
             </span>
-            <span
-              className="h-5 w-5 shrink-0 rounded-full border-[1.5px]"
+            <motion.span
+              animate={{ scale: done ? [1, 1.15, 1] : 1 }}
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-[1.5px]"
               style={{ borderColor: done ? 'var(--color-green)' : 'var(--color-border-2)', background: done ? 'var(--color-green)' : 'transparent' }}
-            />
+            >
+              {done && <CheckIcon width={13} height={13} strokeWidth={3} style={{ color: '#04150c' }} />}
+            </motion.span>
           </button>
         )
       })}
-    </Card>
+    </GlassCard>
   )
 }
 
@@ -272,7 +263,7 @@ function DataPanel() {
     URL.revokeObjectURL(url)
   }
 
-  const importData = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const importData = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
@@ -293,27 +284,27 @@ function DataPanel() {
   }
 
   return (
-    <div className="space-y-2.5">
-      <Card>
-        <CardTitle>💾 Data Backup</CardTitle>
+    <div className="space-y-3">
+      <GlassCard glow="var(--color-blue)">
+        <SectionTitle icon={<DownloadIcon width={14} height={14} />} color="var(--color-blue)">Data Backup</SectionTitle>
         <Callout kind="tip">
           Your sessions, weights, streaks, sleep, and food logs sync to your account when signed in, and are always cached locally. Export regularly for a portable copy.
         </Callout>
-        <button onClick={exportData} className="mb-2 w-full rounded-md bg-[var(--color-blue)] py-2.5 text-[12px] font-bold text-white active:opacity-80 transition-opacity">
-          ⬇ Export — Download Backup JSON
-        </button>
-        <input type="file" accept=".json" onChange={importData} className="w-full rounded-md border border-[var(--color-border-2)] bg-[var(--color-bg-3)] px-2 py-1.5 text-[11px]" />
-        <div className="mt-2 font-[var(--font-mono)] text-[10px] leading-relaxed text-[var(--color-text-3)]">
+        <div className="mb-2.5">
+          <Button variant="secondary" full color="var(--color-blue)" onClick={exportData}>
+            <DownloadIcon width={14} height={14} /> Export Backup JSON
+          </Button>
+        </div>
+        <input type="file" accept=".json" onChange={importData} className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] text-[var(--color-text-2)] file:mr-2 file:rounded-md file:border-none file:bg-white/10 file:px-2 file:py-1 file:text-[10px] file:text-[var(--color-text)]" />
+        <div className="mt-2 text-[10.5px] leading-relaxed text-[var(--color-text-3)]">
           Import merges into current data. Export first if unsure.
         </div>
-      </Card>
-      <Card>
-        <CardTitle>🗑 Danger Zone</CardTitle>
+      </GlassCard>
+      <GlassCard glow="var(--color-accent)">
+        <SectionTitle icon={<TrashIcon width={14} height={14} />} color="var(--color-accent)">Danger Zone</SectionTitle>
         <Callout kind="danger">This permanently deletes today's logged data. Export a backup first.</Callout>
-        <button onClick={clearAll} className="w-full rounded-md bg-[var(--color-accent)] py-2.5 text-[12px] font-bold text-white active:opacity-80 transition-opacity">
-          Clear Logged Data
-        </button>
-      </Card>
+        <Button full onClick={clearAll}>Clear Logged Data</Button>
+      </GlassCard>
     </div>
   )
 }

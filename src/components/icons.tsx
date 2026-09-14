@@ -79,3 +79,62 @@ export const LogOutIcon = (p: IconProps) => (
 export const PlusIcon = (p: IconProps) => (
   <svg {...base(p)}><path d="M12 5v14M5 12h14" /></svg>
 )
+export const XIcon = (p: IconProps) => (
+  <svg {...base(p)}><path d="M18 6 6 18M6 6l12 12" /></svg>
+)
+export const TrophyIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4Z" />
+    <path d="M7 5H4a1 1 0 0 0-1 1c0 2.5 1.5 4.5 4 4.9M17 5h3a1 1 0 0 1 1 1c0 2.5-1.5 4.5-4 4.9" />
+  </svg>
+)
+export const MoonIcon = (p: IconProps) => (
+  <svg {...base(p)}><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" /></svg>
+)
+export const TargetIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4.5" /><circle cx="12" cy="12" r="0.6" fill="currentColor" />
+  </svg>
+)
+export const LockIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <rect x="5" y="10.5" width="14" height="9.5" rx="2.2" />
+    <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
+  </svg>
+)
+export const LoaderIcon = (p: IconProps) => (
+  <svg {...base(p)}><path d="M12 4a8 8 0 1 0 8 8" /></svg>
+)
+export const CheckCircleIcon = (p: IconProps) => (
+  <svg {...base(p)}><circle cx="12" cy="12" r="8.5" /><path d="m8.2 12.3 2.6 2.6 5-5.2" /></svg>
+)
+export const DownloadIcon = (p: IconProps) => (
+  <svg {...base(p)}><path d="M12 3v13M7 11l5 5 5-5M4.5 20h15" /></svg>
+)
+export const TrashIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <path d="M5 7h14M9 7V5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5v2M7 7l1 13a1.5 1.5 0 0 0 1.5 1.4h5a1.5 1.5 0 0 0 1.5-1.4l1-13" />
+  </svg>
+)
+export const ShieldIcon = (p: IconProps) => (
+  <svg {...base(p)}><path d="M12 3.5 5 6v6c0 4.5 3 7.5 7 8.5 4-1 7-4 7-8.5V6l-7-2.5Z" /><path d="m9 12 2.2 2.2L15.5 10" /></svg>
+)
+export const HeartIcon = (p: IconProps) => (
+  <svg {...base(p)}><path d="M12 20.3s-7.5-4.7-9.7-9.4C.6 7.2 2.5 4 6 4c2 0 3.5 1 6 3.5C14.5 5 16 4 18 4c3.5 0 5.4 3.2 3.7 6.9-2.2 4.7-9.7 9.4-9.7 9.4Z" /></svg>
+)
+export const ScaleIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <path d="M12 3v18M5 7h14M5 7 3 12a2.5 2.5 0 0 0 5 0L6 7Z" /><path d="M18 7l-2 5a2.5 2.5 0 0 0 5 0l-2-5Z" /><path d="M8 21h8" />
+  </svg>
+)
+export const SparklesIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.5 5.5l2.8 2.8M15.7 15.7l2.8 2.8M18.5 5.5l-2.8 2.8M8.3 15.7l-2.8 2.8" />
+  </svg>
+)
+export const ClockIcon = (p: IconProps) => (
+  <svg {...base(p)}><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></svg>
+)
+export const AwardIcon = (p: IconProps) => (
+  <svg {...base(p)}><circle cx="12" cy="8.5" r="5.5" /><path d="m8.5 13 -1.8 7.5L12 18l5.3 2.5L15.5 13" /></svg>
+)
