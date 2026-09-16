@@ -7,7 +7,7 @@ preview_urls = false
 
 [vars]
 FIREBASE_PROJECT_ID = "fitness-app-d3ca2"
-COACH_EMAIL = "abhishek@toystack.ai"
+COACH_EMAIL = "ask.abhishek.ai@gmail.com"
 ALLOWED_ORIGINS = "https://i-abhishekkk.github.io,http://localhost:5173"
 
 # ANTHROPIC_API_KEY is set separately as a secret (never in this file):
