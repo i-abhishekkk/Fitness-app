@@ -24,7 +24,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # firebase-admin (and its optional @google-cloud/firestore dep) require Node >=22 —
+          # npm silently skips installing optional deps whose `engines.node` isn't satisfied,
+          # which is why this was failing with "Cannot find module '@google-cloud/firestore'".
+          node-version: 22
       - run: npm ci
       - name: Send hydration reminder (3:00 PM IST)
         if: github.event.schedule == '30 9 * * *'
