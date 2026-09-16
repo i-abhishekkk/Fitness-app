@@ -20,29 +20,16 @@ if (!keyJson) {
 
 const serviceAccount = JSON.parse(keyJson)
 // projectId must be explicit — GitHub Actions runners have no ambient
-// GOOGLE_CLOUD_PROJECT/metadata-server to infer it from, and leaving it out made the
-// Admin SDK resolve to some other (nonexistent) project+database path, surfacing as a
-// bare gRPC "5 NOT_FOUND" on the very first Firestore call.
-initializeApp({ credential: cert(serviceAccount), projectId: serviceAccount.project_id })
-const db = getFirestore()
-const messaging = getMessaging()
+// GOOGLE_CLOUD_PROJECT/metadata-server to infer it from.
+const app = initializeApp({ credential: cert(serviceAccount), projectId: serviceAccount.project_id })
+// This project's Firestore database is registered with id "default" (no parens) rather
+// than the "(default)" sentinel getFirestore(app) assumes when no id is given — confirmed
+// via GET .../v1/projects/{project}/databases, which is the only way to see this; the
+// Admin SDK's gRPC client just returns a bare, message-less "5 NOT_FOUND" for the mismatch.
+const db = getFirestore(app, 'default')
+const messaging = getMessaging(app)
 
-console.log(`Connecting to Firestore project "${serviceAccount.project_id}"...`)
-let userRefs
-try {
-  userRefs = await db.collection('users').listDocuments()
-} catch (err) {
-  console.error('gRPC call failed with an unhelpful error — asking the REST API what databases actually exist:')
-  const { GoogleAuth } = await import('google-auth-library')
-  const auth = new GoogleAuth({ credentials: serviceAccount, scopes: 'https://www.googleapis.com/auth/datastore' })
-  const client = await auth.getClient()
-  const { token } = await client.getAccessToken()
-  const res = await fetch(`https://firestore.googleapis.com/v1/projects/${serviceAccount.project_id}/databases`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  console.error(res.status, await res.text())
-  throw err
-}
+const userRefs = await db.collection('users').listDocuments()
 let sent = 0
 
 for (const userRef of userRefs) {
