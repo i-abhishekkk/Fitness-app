@@ -1,0 +1,43 @@
+name: Send Reminder
+
+on:
+  schedule:
+    # Times are UTC — GitHub Actions cron has no timezone support. These assume IST
+    # (UTC+5:30): 09:30 UTC = 3:00 PM IST (hydration nudge), 15:00 UTC = 8:30 PM IST
+    # (evening missions/water/steps check-in). Adjust both the cron and the message
+    # below if that's the wrong timezone or times.
+    - cron: '30 9 * * *'
+    - cron: '0 15 * * *'
+  workflow_dispatch:
+    inputs:
+      title:
+        description: Notification title (manual test run only)
+        default: 'GOD MODE — test'
+      body:
+        description: Notification body (manual test run only)
+        default: 'This is a manual test reminder.'
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - name: Send hydration reminder (3:00 PM IST)
+        if: github.event.schedule == '30 9 * * *'
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+        run: node scripts/send-reminder.mjs "💧 Hydration check" "How's the water today? Log it before you forget."
+      - name: Send evening check-in reminder (8:30 PM IST)
+        if: github.event.schedule == '0 15 * * *'
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+        run: node scripts/send-reminder.mjs "⚡ Evening check-in" "Log today's missions, steps, and water before the day resets."
+      - name: Send manual test notification
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+        run: node scripts/send-reminder.mjs "${{ inputs.title }}" "${{ inputs.body }}"
