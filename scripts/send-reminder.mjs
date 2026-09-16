@@ -9,6 +9,7 @@
 import { initializeApp, cert } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 import { getMessaging } from 'firebase-admin/messaging'
+import { GoogleAuth } from 'google-auth-library'
 
 const [title = 'GOD MODE', body = 'Time to check in.'] = process.argv.slice(2)
 
@@ -19,14 +20,28 @@ if (!keyJson) {
 }
 
 const serviceAccount = JSON.parse(keyJson)
-// projectId must be explicit — GitHub Actions runners have no ambient
-// GOOGLE_CLOUD_PROJECT/metadata-server to infer it from.
+
+/** The Admin SDK's getFirestore(app) assumes the database id is the "(default)" sentinel
+ *  when none is given — but that's only true if the database was actually created that
+ *  way, and the gRPC client's error for a mismatch is a bare, message-less "5 NOT_FOUND"
+ *  that gives no hint what's wrong. Asking the REST API what databases actually exist
+ *  sidesteps guessing the id (and re-guessing it again the next time the database gets
+ *  recreated). */
+async function findDatabaseId() {
+  const auth = new GoogleAuth({ credentials: serviceAccount, scopes: 'https://www.googleapis.com/auth/datastore' })
+  const client = await auth.getClient()
+  const { token } = await client.getAccessToken()
+  const res = await fetch(`https://firestore.googleapis.com/v1/projects/${serviceAccount.project_id}/databases`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  const { databases } = await res.json()
+  const first = databases?.[0]
+  if (!first) throw new Error('No Firestore database found for this project.')
+  return first.name.split('/').pop()
+}
+
 const app = initializeApp({ credential: cert(serviceAccount), projectId: serviceAccount.project_id })
-// This project's Firestore database is registered with id "default" (no parens) rather
-// than the "(default)" sentinel getFirestore(app) assumes when no id is given — confirmed
-// via GET .../v1/projects/{project}/databases, which is the only way to see this; the
-// Admin SDK's gRPC client just returns a bare, message-less "5 NOT_FOUND" for the mismatch.
-const db = getFirestore(app, 'default')
+const db = getFirestore(app, await findDatabaseId())
 const messaging = getMessaging(app)
 
 const userRefs = await db.collection('users').listDocuments()
