@@ -1,0 +1,14 @@
+name = "godmode-coach"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+preview_urls = false
+
+[vars]
+FIREBASE_PROJECT_ID = "fitness-app-d3ca2"
+COACH_EMAIL = "abhishek@toystack.ai"
+ALLOWED_ORIGINS = "https://i-abhishekkk.github.io,http://localhost:5173"
+
+# ANTHROPIC_API_KEY is set separately as a secret (never in this file):
+#   npx wrangler secret put ANTHROPIC_API_KEY

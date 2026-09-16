@@ -12,6 +12,7 @@ const Train = lazy(() => import('./pages/Train'))
 const Diet = lazy(() => import('./pages/Diet'))
 const Tracker = lazy(() => import('./pages/Tracker'))
 const Progress = lazy(() => import('./pages/Progress'))
+const CoachChat = lazy(() => import('./components/CoachChat').then((m) => ({ default: m.CoachChat })))
 
 function Page({ children }: { children: React.ReactNode }) {
   return (
@@ -59,6 +60,9 @@ export default function App() {
         </Suspense>
       </AnimatePresence>
       <BottomNav />
+      <Suspense fallback={null}>
+        <CoachChat />
+      </Suspense>
     </div>
   )
 }

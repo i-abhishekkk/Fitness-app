@@ -156,3 +156,15 @@ export const BellIcon = (p: IconProps) => (
     <path d="M9.5 17.5a2.5 2.5 0 0 0 5 0" />
   </svg>
 )
+export const SendIcon = (p: IconProps) => (
+  <svg {...base(p)}><path d="M4.5 12 20 4.5 14.5 20l-2.8-6.7L4.5 12Z" /></svg>
+)
+export const BotIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <rect x="4" y="8.5" width="16" height="11" rx="3.5" />
+    <path d="M12 8.5V5M9 4.5h6" />
+    <circle cx="9" cy="14" r="1.2" fill="currentColor" stroke="none" />
+    <circle cx="15" cy="14" r="1.2" fill="currentColor" stroke="none" />
+    <path d="M2 13v2M22 13v2" />
+  </svg>
+)
