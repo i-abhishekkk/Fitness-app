@@ -1,6 +1,5 @@
-// Temporary diagnostic — not part of the app. Reads (read-only) the project's Identity
-// Platform / Firebase Auth config to check authorized domains and enabled sign-in
-// providers, using the same service account already set up for send-reminder.mjs.
+// Temporary — adds the GitHub Pages domain to Firebase Auth's authorized domains list
+// (it was missing, which is why Google sign-in was failing on the live site).
 import { GoogleAuth } from 'google-auth-library'
 
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
@@ -9,15 +8,21 @@ const client = await auth.getClient()
 const { token } = await client.getAccessToken()
 const project = serviceAccount.project_id
 
-async function get(path) {
-  const res = await fetch(`https://identitytoolkit.googleapis.com/${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  return { status: res.status, body: await res.json() }
-}
+const current = await fetch(`https://identitytoolkit.googleapis.com/admin/v2/projects/${project}/config`, {
+  headers: { Authorization: `Bearer ${token}` },
+}).then((r) => r.json())
 
-console.log('--- config (authorizedDomains) ---')
-console.log(JSON.stringify(await get(`admin/v2/projects/${project}/config`), null, 2))
+const domain = 'i-abhishekkk.github.io'
+const authorizedDomains = [...new Set([...current.authorizedDomains, domain])]
+console.log('Current:', current.authorizedDomains)
+console.log('Setting: ', authorizedDomains)
 
-console.log('--- google.com IdP config ---')
-console.log(JSON.stringify(await get(`admin/v2/projects/${project}/defaultSupportedIdpConfigs/google.com`), null, 2))
+const res = await fetch(
+  `https://identitytoolkit.googleapis.com/admin/v2/projects/${project}/config?updateMask=authorizedDomains`,
+  {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ authorizedDomains }),
+  },
+)
+console.log(res.status, JSON.stringify(await res.json(), null, 2))
