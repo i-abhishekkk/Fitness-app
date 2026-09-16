@@ -18,7 +18,12 @@ if (!keyJson) {
   process.exit(1)
 }
 
-initializeApp({ credential: cert(JSON.parse(keyJson)) })
+const serviceAccount = JSON.parse(keyJson)
+// projectId must be explicit — GitHub Actions runners have no ambient
+// GOOGLE_CLOUD_PROJECT/metadata-server to infer it from, and leaving it out made the
+// Admin SDK resolve to some other (nonexistent) project+database path, surfacing as a
+// bare gRPC "5 NOT_FOUND" on the very first Firestore call.
+initializeApp({ credential: cert(serviceAccount), projectId: serviceAccount.project_id })
 const db = getFirestore()
 const messaging = getMessaging()
 
