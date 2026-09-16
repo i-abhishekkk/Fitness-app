@@ -37,6 +37,7 @@ export interface AppState {
   skillUnlocks: Record<string, 'locked' | 'current' | 'unlocked'>
   habits: Record<string, boolean>
   aura: AuraState
+  push: { enabled: boolean; token: string | null }
 }
 
 export const DEFAULTS: AppState = {
@@ -54,6 +55,7 @@ export const DEFAULTS: AppState = {
   skillUnlocks: {},
   habits: {},
   aura: { hs: 0, mu: 0, pu: 0, cv: 0, hsRaw: 0, muRaw: 0, puRaw: 0, cvRaw: 0, c2bRaw: 0, scapRaw: 0 },
+  push: { enabled: false, token: null },
 }
 
 const STORAGE_KEY = 'gm5'

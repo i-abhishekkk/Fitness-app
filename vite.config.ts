@@ -8,33 +8,19 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      // Custom service worker (src/sw.ts) instead of the auto-generated one — it also
+      // needs to initialize Firebase Messaging to handle background push notifications,
+      // which the plugin's own `workbox`-only `generateSW` strategy can't do.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       // We already hand-author public/manifest.webmanifest and link it in index.html —
       // this just adds the service worker on top, it doesn't generate a second manifest.
       manifest: false,
       registerType: 'autoUpdate',
       injectRegister: 'auto',
-      workbox: {
-        // Serve the app shell for any in-scope navigation once the SW is active, so
-        // installed-app deep links (e.g. /today) resolve instantly and offline instead
-        // of depending on the GitHub Pages 404.html redirect trick (still the fallback
-        // for the very first, not-yet-installed visit).
-        navigateFallback: 'index.html',
+      injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-            handler: 'StaleWhileRevalidate',
-            options: { cacheName: 'google-fonts-stylesheets' },
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'google-fonts-webfonts',
-              expiration: { maxEntries: 12, maxAgeSeconds: 60 * 60 * 24 * 365 },
-            },
-          },
-        ],
       },
       devOptions: {
         enabled: true,

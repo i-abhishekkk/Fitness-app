@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { User } from 'firebase/auth'
 import { doc, getDoc, setDoc } from 'firebase/firestore'
-import { auth, db, firebaseEnabled, watchAuth } from '../lib/firebase'
+import { auth, db, firebaseEnabled, watchAuth, watchForegroundPush } from '../lib/firebase'
 import { DEFAULTS, loadLocal, saveLocal, type AppState } from './appState'
 
 interface StoreCtx {
@@ -29,6 +29,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     })
     return unsub
   }, [])
+
+  // Show a notification for push messages that arrive while the app is in the foreground
+  useEffect(() => watchForegroundPush(), [])
 
   // Pull cloud state once per sign-in
   useEffect(() => {

@@ -1,9 +1,10 @@
 import { useState, type ChangeEvent } from 'react'
 import { motion } from 'motion/react'
-import { GlassCard, SectionTitle, Segmented, Callout, TextField, TextAreaField, SelectField, Button } from '../components/ui'
+import { GlassCard, SectionTitle, Segmented, Callout, TextField, TextAreaField, SelectField, Button, Toggle } from '../components/ui'
 import { CountUp } from '../components/CountUp'
-import { PlusIcon, XIcon, MoonIcon, TargetIcon, DownloadIcon, TrashIcon, CheckIcon } from '../components/icons'
+import { PlusIcon, XIcon, MoonIcon, TargetIcon, DownloadIcon, TrashIcon, CheckIcon, BellIcon } from '../components/icons'
 import { useStore } from '../store/StoreContext'
+import { enablePush, disablePush } from '../lib/firebase'
 import { haptic } from '../lib/haptics'
 import { HABITS } from '../data/plan'
 import type { SessionEntry } from '../store/appState'
@@ -254,6 +255,55 @@ function Habits() {
   )
 }
 
+function NotificationsCard() {
+  const { state, setState } = useStore()
+  const [status, setStatus] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const on = state.push.enabled
+
+  const toggle = async () => {
+    setBusy(true)
+    setStatus(null)
+    if (on) {
+      await disablePush()
+      setState((s) => ({ ...s, push: { enabled: false, token: null } }))
+    } else {
+      const result = await enablePush()
+      if ('token' in result) {
+        setState((s) => ({ ...s, push: { enabled: true, token: result.token } }))
+      } else if (result.error === 'denied') {
+        setStatus('Blocked — allow notifications for this site in your browser settings, then try again.')
+      } else if (result.error === 'unsupported') {
+        setStatus('Not supported here yet — on iPhone, install the app to your home screen first (Share → Add to Home Screen), then enable from inside the installed app.')
+      } else {
+        setStatus('Not configured yet.')
+      }
+    }
+    setBusy(false)
+  }
+
+  return (
+    <GlassCard glow="var(--color-purple)">
+      <SectionTitle icon={<BellIcon width={14} height={14} />} color="var(--color-purple)">Reminders</SectionTitle>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[12.5px] font-semibold">Push notifications</div>
+          <div className="mt-0.5 text-[10.5px] leading-relaxed text-[var(--color-text-3)]">
+            {on ? 'Enabled on this device.' : 'Get reminded to log water, steps, and missions.'}
+          </div>
+        </div>
+        <Toggle on={on} onToggle={toggle} color="var(--color-purple)" />
+      </div>
+      {busy && <div className="mt-2 text-[10.5px] text-[var(--color-text-3)]">Working…</div>}
+      {status && (
+        <div className="mt-2.5 rounded-lg bg-white/[0.03] px-2.5 py-2 text-[10.5px] leading-relaxed text-[var(--color-text-2)]">
+          {status}
+        </div>
+      )}
+    </GlassCard>
+  )
+}
+
 function DataPanel() {
   const { state, setState } = useStore()
 
@@ -289,6 +339,7 @@ function DataPanel() {
 
   return (
     <div className="space-y-3">
+      <NotificationsCard />
       <GlassCard glow="var(--color-blue)">
         <SectionTitle icon={<DownloadIcon width={14} height={14} />} color="var(--color-blue)">Data Backup</SectionTitle>
         <Callout kind="tip">
