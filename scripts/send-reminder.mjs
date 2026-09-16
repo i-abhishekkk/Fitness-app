@@ -32,13 +32,15 @@ let userRefs
 try {
   userRefs = await db.collection('users').listDocuments()
 } catch (err) {
-  console.error('Firestore call failed. Top-level collections in this database:')
-  try {
-    const cols = await db.listCollections()
-    console.error(cols.map((c) => c.id).join(', ') || '(none)')
-  } catch (err2) {
-    console.error('listCollections() also failed:', err2 instanceof Error ? err2.message : err2)
-  }
+  console.error('gRPC call failed with an unhelpful error — asking the REST API what databases actually exist:')
+  const { GoogleAuth } = await import('google-auth-library')
+  const auth = new GoogleAuth({ credentials: serviceAccount, scopes: 'https://www.googleapis.com/auth/datastore' })
+  const client = await auth.getClient()
+  const { token } = await client.getAccessToken()
+  const res = await fetch(`https://firestore.googleapis.com/v1/projects/${serviceAccount.project_id}/databases`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  console.error(res.status, await res.text())
   throw err
 }
 let sent = 0
