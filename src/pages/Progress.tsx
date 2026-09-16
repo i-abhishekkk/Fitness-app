@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
 import { AreaChart, Area, ResponsiveContainer, YAxis, Tooltip } from 'recharts'
 import { motion } from 'motion/react'
-import { GlassCard, SectionTitle, Segmented, ProgressBar, TextField, Button, mix } from '../components/ui'
+import { GlassCard, SectionTitle, Segmented, ProgressBar, TextField, Button, IconButton, mix } from '../components/ui'
 import { CountUp } from '../components/CountUp'
-import { TrophyIcon, SparklesIcon, ScaleIcon, XIcon, LockIcon, LoaderIcon, CheckCircleIcon } from '../components/icons'
+import { TrophyIcon, SparklesIcon, ScaleIcon, XIcon, LockIcon, LoaderIcon, CheckCircleIcon, ShareIcon } from '../components/icons'
 import { useStore } from '../store/StoreContext'
 import { WEIGHT_BASELINE, WEIGHT_TARGET, AURA_TARGETS, SKILL_UNLOCKS } from '../data/plan'
 
@@ -251,6 +251,16 @@ function GoalsView() {
   const current = state.weights.at(-1)?.kg ?? WEIGHT_BASELINE
   const wpct = Math.min(100, Math.round(((current - WEIGHT_BASELINE) / (WEIGHT_TARGET - WEIGHT_BASELINE)) * 100))
   const a = state.aura
+  const streak = state.streakDays.length
+
+  const shareProgress = async () => {
+    const text = `GOD MODE progress — ${current.toFixed(1)}kg (target ${WEIGHT_TARGET}kg), ${streak}-day streak, HS hold ${a.hsRaw}s, ${a.puRaw} pull-ups. 💪`
+    if (navigator.share) {
+      await navigator.share({ text, title: 'GOD MODE Progress' }).catch(() => {})
+    } else {
+      await navigator.clipboard.writeText(text).catch(() => {})
+    }
+  }
 
   const skills = [
     { name: `Handstand hold (${AURA_TARGETS.hs}s goal)`, raw: `${a.hsRaw}s`, target: AURA_TARGETS.hs, val: a.hsRaw, color: 'var(--color-purple)' },
@@ -267,8 +277,15 @@ function GoalsView() {
         className="glass-strong relative overflow-hidden rounded-2xl p-5"
       >
         <div aria-hidden className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-[var(--color-accent)] opacity-20 blur-3xl" />
-        <div className="relative flex items-center gap-1.5 font-[var(--font-mono)] text-[10px] font-bold tracking-[1.5px] text-[var(--color-accent)]">
-          <SparklesIcon width={12} height={12} /> TRANSFORMATION TARGET
+        <div className="relative flex items-center gap-1.5">
+          <span className="flex items-center gap-1.5 font-[var(--font-mono)] text-[10px] font-bold tracking-[1.5px] text-[var(--color-accent)]">
+            <SparklesIcon width={12} height={12} /> TRANSFORMATION TARGET
+          </span>
+          <span className="ml-auto">
+            <IconButton label="Share progress" onClick={shareProgress}>
+              <ShareIcon width={14} height={14} />
+            </IconButton>
+          </span>
         </div>
         <div className="relative mt-1.5 font-[var(--font-display)] text-2xl font-semibold tracking-tight">
           {WEIGHT_BASELINE}kg → {WEIGHT_TARGET}kg Lean

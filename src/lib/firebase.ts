@@ -7,7 +7,12 @@ import {
   onAuthStateChanged,
   type User,
 } from 'firebase/auth'
-import { getFirestore, type Firestore } from 'firebase/firestore'
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentSingleTabManager,
+  type Firestore,
+} from 'firebase/firestore'
 
 const cfg = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -29,7 +34,12 @@ let db: Firestore | undefined
 if (firebaseEnabled) {
   app = initializeApp(cfg)
   auth = getAuth(app)
-  db = getFirestore(app)
+  // Persistent local cache — writes made while offline (or a flaky gym wifi) queue in
+  // IndexedDB and flush automatically once connectivity returns, instead of the silent
+  // `.catch(() => {})` drop the debounced sync in StoreContext would otherwise hit.
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentSingleTabManager({}) }),
+  })
 }
 
 export { app, auth, db }

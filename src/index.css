@@ -65,6 +65,10 @@ body {
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
   position: relative;
+  /* kills the browser-chrome rubber-band/pull-to-refresh bounce so installed-app
+     scrolling feels native instead of "a website in a wrapper" */
+  overscroll-behavior-y: none;
+  padding-top: env(safe-area-inset-top);
 }
 
 * {

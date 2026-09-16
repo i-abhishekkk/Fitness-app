@@ -138,3 +138,21 @@ export const ClockIcon = (p: IconProps) => (
 export const AwardIcon = (p: IconProps) => (
   <svg {...base(p)}><circle cx="12" cy="8.5" r="5.5" /><path d="m8.5 13 -1.8 7.5L12 18l5.3 2.5L15.5 13" /></svg>
 )
+export const ShareIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <path d="M12 15V4M8 8l4-4 4 4" />
+    <path d="M5 12v6.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V12" />
+  </svg>
+)
+export const SmartphoneIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <rect x="6" y="2.5" width="12" height="19" rx="2.2" />
+    <path d="M11 18.2h2" />
+  </svg>
+)
+export const BellIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <path d="M6 9a6 6 0 1 1 12 0c0 4 1.5 5.5 1.5 5.5h-15S6 13 6 9Z" />
+    <path d="M9.5 17.5a2.5 2.5 0 0 0 5 0" />
+  </svg>
+)

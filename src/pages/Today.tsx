@@ -4,6 +4,7 @@ import { GlassCard, SectionTitle, ProgressBar, Toggle, TextField } from '../comp
 import { CountUp } from '../components/CountUp'
 import { CheckIcon, DropletIcon, FootprintsIcon, PillIcon, BoltIcon, SparklesIcon } from '../components/icons'
 import { useStore } from '../store/StoreContext'
+import { haptic } from '../lib/haptics'
 import {
   AURA_TARGETS,
   CHECKLISTS,
@@ -32,16 +33,22 @@ export default function Today() {
 
   const [stepsInput, setStepsInput] = useState('')
 
-  const toggleCheck = (id: string) =>
+  const toggleCheck = (id: string) => {
+    haptic()
     setState((s) => ({ ...s, checklist: { ...s.checklist, [id]: !s.checklist[id] } }))
+  }
 
   const resetChecklist = () => setState((s) => ({ ...s, checklist: {} }))
 
-  const toggleWaterCup = (i: number) =>
+  const toggleWaterCup = (i: number) => {
+    haptic(6)
     setState((s) => ({ ...s, water: s.water === i + 1 ? i : i + 1 }))
+  }
 
-  const toggleSupp = (key: string) =>
+  const toggleSupp = (key: string) => {
+    haptic()
     setState((s) => ({ ...s, supps: { ...s.supps, [key]: !s.supps[key] } }))
+  }
 
   const logSteps = () => {
     const n = parseInt(stepsInput, 10)

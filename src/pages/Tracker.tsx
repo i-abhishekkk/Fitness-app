@@ -4,6 +4,7 @@ import { GlassCard, SectionTitle, Segmented, Callout, TextField, TextAreaField, 
 import { CountUp } from '../components/CountUp'
 import { PlusIcon, XIcon, MoonIcon, TargetIcon, DownloadIcon, TrashIcon, CheckIcon } from '../components/icons'
 import { useStore } from '../store/StoreContext'
+import { haptic } from '../lib/haptics'
 import { HABITS } from '../data/plan'
 import type { SessionEntry } from '../store/appState'
 
@@ -218,7 +219,10 @@ function Sleep() {
 
 function Habits() {
   const { state, setState } = useStore()
-  const toggle = (key: string) => setState((s) => ({ ...s, habits: { ...s.habits, [key]: !s.habits[key] } }))
+  const toggle = (key: string) => {
+    haptic()
+    setState((s) => ({ ...s, habits: { ...s.habits, [key]: !s.habits[key] } }))
+  }
   return (
     <GlassCard glow="var(--color-green)">
       <SectionTitle icon={<TargetIcon width={14} height={14} />} color="var(--color-green)">Daily Habits</SectionTitle>
