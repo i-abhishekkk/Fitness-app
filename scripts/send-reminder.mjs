@@ -27,7 +27,20 @@ initializeApp({ credential: cert(serviceAccount), projectId: serviceAccount.proj
 const db = getFirestore()
 const messaging = getMessaging()
 
-const userRefs = await db.collection('users').listDocuments()
+console.log(`Connecting to Firestore project "${serviceAccount.project_id}"...`)
+let userRefs
+try {
+  userRefs = await db.collection('users').listDocuments()
+} catch (err) {
+  console.error('Firestore call failed. Top-level collections in this database:')
+  try {
+    const cols = await db.listCollections()
+    console.error(cols.map((c) => c.id).join(', ') || '(none)')
+  } catch (err2) {
+    console.error('listCollections() also failed:', err2 instanceof Error ? err2.message : err2)
+  }
+  throw err
+}
 let sent = 0
 
 for (const userRef of userRefs) {
