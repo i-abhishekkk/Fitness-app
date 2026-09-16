@@ -25,6 +25,8 @@ if (!exchangeData.idToken) {
   process.exit(1)
 }
 console.log('Got real ID token for uid', uid)
+const payload = JSON.parse(Buffer.from(exchangeData.idToken.split('.')[1], 'base64').toString())
+console.log('Token claims:', JSON.stringify({ email: payload.email, email_verified: payload.email_verified, uid: payload.user_id, firebase: payload.firebase }))
 
 const workerRes = await fetch(process.env.WORKER_URL, {
   method: 'POST',
