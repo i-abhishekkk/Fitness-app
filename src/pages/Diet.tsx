@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { motion } from 'motion/react'
-import { GlassCard, SectionTitle, Segmented, Callout, ProgressBar, Badge, Button, Toggle } from '../components/ui'
+import { GlassCard, SectionTitle, Segmented, Callout, ProgressBar, Badge, Button, Toggle, TextField } from '../components/ui'
 import { CountUp } from '../components/CountUp'
-import { PillIcon, PlusIcon, SaladIcon } from '../components/icons'
+import { PillIcon, PlusIcon, SaladIcon, XIcon } from '../components/icons'
 import { DIET_PLANS, QUICK_ADD, BADGE_COLORS, type Meal } from '../data/diet'
 import { DIET_TARGETS, SUPPS, getTodayCfg, type DayType } from '../data/plan'
 import { useStore } from '../store/StoreContext'
+import type { FoodEntry } from '../store/appState'
 
 type Top = 'today' | 'plan' | 'log' | 'supps'
 const DAY_TABS: { value: DayType; label: string }[] = [
@@ -140,11 +141,36 @@ function FullPlan() {
 function FoodLog() {
   const { state, setState } = useStore()
   const m = state.macros
+  const [custom, setCustom] = useState({ name: '', p: '', c: '', f: '', k: '' })
 
-  const quickAdd = (p: number, c: number, f: number, k: number) =>
+  const todayFood = state.food.filter((f) => new Date(f.date).toDateString() === new Date().toDateString())
+
+  const addMacros = (p: number, c: number, f: number, k: number) =>
     setState((s) => ({ ...s, macros: { p: s.macros.p + p, c: s.macros.c + c, f: s.macros.f + f, k: s.macros.k + k } }))
 
-  const reset = () => setState((s) => ({ ...s, macros: { p: 0, c: 0, f: 0, k: 0 } }))
+  const quickAdd = (p: number, c: number, f: number, k: number) => addMacros(p, c, f, k)
+
+  const addCustomMeal = () => {
+    const p = parseFloat(custom.p) || 0
+    const c = parseFloat(custom.c) || 0
+    const f = parseFloat(custom.f) || 0
+    const k = parseFloat(custom.k) || 0
+    if (!custom.name.trim() || (!p && !c && !f && !k)) return
+    const entry: FoodEntry = { id: crypto.randomUUID(), date: new Date().toISOString(), name: custom.name.trim(), p, c, f, k }
+    setState((s) => ({ ...s, food: [...s.food, entry] }))
+    addMacros(p, c, f, k)
+    setCustom({ name: '', p: '', c: '', f: '', k: '' })
+  }
+
+  const removeFood = (entry: FoodEntry) => {
+    setState((s) => ({ ...s, food: s.food.filter((x) => x.id !== entry.id) }))
+    addMacros(-entry.p, -entry.c, -entry.f, -entry.k)
+  }
+
+  const reset = () => {
+    const todayIds = new Set(todayFood.map((f) => f.id))
+    setState((s) => ({ ...s, macros: { p: 0, c: 0, f: 0, k: 0 }, food: s.food.filter((f) => !todayIds.has(f.id)) }))
+  }
 
   return (
     <div className="space-y-3">
@@ -170,6 +196,38 @@ function FoodLog() {
         <MacroBar label="Fats" value={m.f} target={120} color="var(--color-blue)" />
         <MacroBar label="Calories" value={m.k} target={3900} color="var(--color-green)" />
       </GlassCard>
+
+      <GlassCard glow="var(--color-purple)">
+        <SectionTitle icon={<PlusIcon width={14} height={14} />} color="var(--color-purple)">Add Custom Meal</SectionTitle>
+        <div className="mb-2.5">
+          <TextField value={custom.name} onChange={(e) => setCustom((s) => ({ ...s, name: e.target.value }))} placeholder="Meal name (e.g. Restaurant lunch)" />
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          <TextField type="number" value={custom.k} onChange={(e) => setCustom((s) => ({ ...s, k: e.target.value }))} placeholder="kcal" />
+          <TextField type="number" value={custom.p} onChange={(e) => setCustom((s) => ({ ...s, p: e.target.value }))} placeholder="P g" />
+          <TextField type="number" value={custom.c} onChange={(e) => setCustom((s) => ({ ...s, c: e.target.value }))} placeholder="C g" />
+          <TextField type="number" value={custom.f} onChange={(e) => setCustom((s) => ({ ...s, f: e.target.value }))} placeholder="F g" />
+        </div>
+        <div className="mt-3">
+          <Button full color="var(--color-purple)" onClick={addCustomMeal}>Add to Today's Log</Button>
+        </div>
+        {todayFood.length > 0 && (
+          <div className="mt-3 border-t border-white/[0.06] pt-3">
+            {todayFood.map((f) => (
+              <div key={f.id} className="flex items-center justify-between gap-2 border-b border-white/[0.05] py-2 text-[12px] last:border-none">
+                <div>
+                  <div className="font-semibold">{f.name}</div>
+                  <div className="font-[var(--font-mono)] text-[10px] text-[var(--color-text-3)]">{f.k} kcal · P{f.p} C{f.c} F{f.f}</div>
+                </div>
+                <button onClick={() => removeFood(f)} className="shrink-0 text-[var(--color-text-3)] transition-colors hover:text-[var(--color-accent)]">
+                  <XIcon width={13} height={13} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </GlassCard>
+
       <GlassCard>
         <SectionTitle>Quick Add</SectionTitle>
         <div className="grid grid-cols-2 gap-2">
@@ -203,7 +261,7 @@ function SuppsDetail() {
     <GlassCard glow="var(--color-amber)">
       <SectionTitle icon={<PillIcon width={14} height={14} />} color="var(--color-amber)">Supplement Protocol</SectionTitle>
       <Callout kind="tip">
-        Timing is everything. Creatine with carbs post-workout. B12 with fat. D3 every other day with a fat meal. ZMA before sleep.
+        Timing is everything. Creatine with carbs post-workout. Multivitamin + collagen daily with Meal 1. B12 with fat. D3 once a week with a fat meal. ZMA before sleep.
       </Callout>
       {SUPPS.map((s) => {
         const on = !!state.supps[s.key]

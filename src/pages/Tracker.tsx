@@ -6,15 +6,14 @@ import { PlusIcon, XIcon, MoonIcon, TargetIcon, DownloadIcon, TrashIcon, CheckIc
 import { useStore } from '../store/StoreContext'
 import { enablePush, disablePush } from '../lib/firebase'
 import { haptic } from '../lib/haptics'
-import { HABITS } from '../data/plan'
+import { HABITS, getTodayDow } from '../data/plan'
+import { SPLIT } from '../data/workouts'
 import type { SessionEntry } from '../store/appState'
 
 type Top = 'session' | 'history' | 'sleep' | 'habits' | 'data'
 
-const DAY_OPTIONS = [
-  'MON — Pull Day A', 'TUE — Push Day A', 'WED — Leg Day (Heavy)', 'THU — Pull Day B',
-  'FRI — Push Day B', 'SAT — HS Mastery + Park Legs', 'SUN — Recovery', 'Skill Practice Only',
-]
+const DAY_OPTIONS = SPLIT.map((d) => `${d.dow} — ${d.title}`)
+const EXTRA_OPTION = 'Skill Practice Only (not on the split)'
 
 export default function Tracker() {
   const [top, setTop] = useState<Top>('session')
@@ -42,7 +41,11 @@ export default function Tracker() {
 
 function LogSession() {
   const { setState } = useStore()
-  const [day, setDay] = useState(DAY_OPTIONS[0])
+  const todayOption = (() => {
+    const d = SPLIT.find((x) => x.dow === getTodayDow())
+    return d ? `${d.dow} — ${d.title}` : EXTRA_OPTION
+  })()
+  const [day, setDay] = useState(todayOption)
   const [hs, setHs] = useState('')
   const [pu, setPu] = useState('')
   const [mu, setMu] = useState('')
@@ -50,21 +53,37 @@ function LogSession() {
   const [c2b, setC2b] = useState('')
   const [scap, setScap] = useState('')
   const [notes, setNotes] = useState('')
-  const [exercises, setExercises] = useState<{ name: string; sets: string }[]>([])
+  const [logged, setLogged] = useState<Record<string, { sets: string; reps: string; weight: string }>>({})
+  const [extra, setExtra] = useState<{ name: string; sets: string }[]>([])
 
-  const addExRow = () => setExercises((e) => [...e, { name: '', sets: '' }])
-  const updateEx = (i: number, field: 'name' | 'sets', v: string) =>
-    setExercises((e) => e.map((row, idx) => (idx === i ? { ...row, [field]: v } : row)))
-  const removeEx = (i: number) => setExercises((e) => e.filter((_, idx) => idx !== i))
+  const splitDay = SPLIT.find((d) => `${d.dow} — ${d.title}` === day)
+  const listedExercises = splitDay ? splitDay.blocks.flatMap((b) => b.exercises.map((e) => e.name)) : []
+
+  const setField = (name: string, field: 'sets' | 'reps' | 'weight', v: string) =>
+    setLogged((l) => ({ ...l, [name]: { ...(l[name] ?? { sets: '', reps: '', weight: '' }), [field]: v } }))
+
+  const addExtraRow = () => setExtra((e) => [...e, { name: '', sets: '' }])
+  const updateExtra = (i: number, field: 'name' | 'sets', v: string) =>
+    setExtra((e) => e.map((row, idx) => (idx === i ? { ...row, [field]: v } : row)))
+  const removeExtra = (i: number) => setExtra((e) => e.filter((_, idx) => idx !== i))
 
   const save = () => {
     const num = (s: string) => (s ? parseInt(s, 10) : 0)
+    const fromSplit = listedExercises
+      .map((name) => {
+        const l = logged[name]
+        if (!l || (!l.sets && !l.reps && !l.weight)) return null
+        const parts = [l.sets && `${l.sets} sets`, l.reps && `${l.reps} reps`, l.weight && `${l.weight}kg`].filter(Boolean).join(' × ')
+        return { name, sets: parts || '—' }
+      })
+      .filter(Boolean) as SessionEntry['exercises']
+
     setState((s) => {
       const session: SessionEntry = {
         id: crypto.randomUUID(),
         date: new Date().toISOString(),
         dayType: day,
-        exercises: [...exercises, notes ? { name: 'Notes', sets: notes } : null].filter(Boolean) as SessionEntry['exercises'],
+        exercises: [...fromSplit, ...extra, notes ? { name: 'Notes', sets: notes } : null].filter(Boolean) as SessionEntry['exercises'],
       }
       const aura = { ...s.aura }
       if (hs) aura.hsRaw = Math.max(aura.hsRaw, num(hs))
@@ -75,14 +94,14 @@ function LogSession() {
       if (scap) aura.scapRaw = Math.max(aura.scapRaw, num(scap))
       return { ...s, sessions: [session, ...s.sessions], aura }
     })
-    setHs(''); setPu(''); setMu(''); setCv(''); setC2b(''); setScap(''); setNotes(''); setExercises([])
+    setHs(''); setPu(''); setMu(''); setCv(''); setC2b(''); setScap(''); setNotes(''); setLogged({}); setExtra([])
   }
 
   return (
     <GlassCard glow="var(--color-accent)">
       <SectionTitle>Log Workout Session</SectionTitle>
       <div className="mb-4">
-        <SelectField label="Session" value={day} onChange={setDay} options={DAY_OPTIONS} />
+        <SelectField label="Session" value={day} onChange={setDay} options={[...DAY_OPTIONS, EXTRA_OPTION]} />
       </div>
 
       <div className="mb-2 font-[var(--font-mono)] text-[10px] font-bold uppercase tracking-[1.5px] text-[var(--color-text-3)]">
@@ -97,31 +116,72 @@ function LogSession() {
         <TextField type="number" label="Scapular Pull-ups (reps)" value={scap} onChange={(e) => setScap(e.target.value)} />
       </div>
 
+      {listedExercises.length > 0 && (
+        <>
+          <div className="mb-2 font-[var(--font-mono)] text-[10px] font-bold uppercase tracking-[1.5px] text-[var(--color-text-3)]">
+            {day.split(' — ')[1] ?? 'Today'}'s Exercises
+          </div>
+          <div className="mb-4 space-y-2.5">
+            {listedExercises.map((name) => {
+              const l = logged[name] ?? { sets: '', reps: '', weight: '' }
+              return (
+                <div key={name} className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
+                  <div className="mb-2 text-[12px] font-semibold leading-snug">{name}</div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <input
+                      value={l.sets}
+                      onChange={(e) => setField(name, 'sets', e.target.value)}
+                      type="number"
+                      placeholder="Sets"
+                      className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-[11.5px] outline-none focus:border-[var(--color-accent)]"
+                    />
+                    <input
+                      value={l.reps}
+                      onChange={(e) => setField(name, 'reps', e.target.value)}
+                      type="number"
+                      placeholder="Reps"
+                      className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-[11.5px] outline-none focus:border-[var(--color-accent)]"
+                    />
+                    <input
+                      value={l.weight}
+                      onChange={(e) => setField(name, 'weight', e.target.value)}
+                      type="number"
+                      placeholder="kg"
+                      className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-[11.5px] outline-none focus:border-[var(--color-accent)]"
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </>
+      )}
+
       <div className="mb-2 font-[var(--font-mono)] text-[10px] font-bold uppercase tracking-[1.5px] text-[var(--color-text-3)]">
-        Exercise Log
+        Extra Exercises (not on the split)
       </div>
-      {exercises.map((ex, i) => (
+      {extra.map((ex, i) => (
         <div key={i} className="mb-2 flex gap-1.5">
           <input
             value={ex.name}
-            onChange={(e) => updateEx(i, 'name', e.target.value)}
+            onChange={(e) => updateExtra(i, 'name', e.target.value)}
             placeholder="Exercise"
             className="flex-1 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 text-[11.5px] outline-none focus:border-[var(--color-accent)]"
           />
           <input
             value={ex.sets}
-            onChange={(e) => updateEx(i, 'sets', e.target.value)}
+            onChange={(e) => updateExtra(i, 'sets', e.target.value)}
             placeholder="4x8 @ 60kg"
             className="w-28 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 text-[11.5px] outline-none focus:border-[var(--color-accent)]"
           />
-          <button onClick={() => removeEx(i)} className="grid shrink-0 place-items-center rounded-lg border border-white/10 px-2 text-[var(--color-text-3)] transition-colors hover:bg-white/5">
+          <button onClick={() => removeExtra(i)} className="grid shrink-0 place-items-center rounded-lg border border-white/10 px-2 text-[var(--color-text-3)] transition-colors hover:bg-white/5">
             <XIcon width={13} height={13} />
           </button>
         </div>
       ))}
       <div className="mb-4">
-        <Button variant="ghost" full onClick={addExRow}>
-          <PlusIcon width={13} height={13} /> Add Exercise
+        <Button variant="ghost" full onClick={addExtraRow}>
+          <PlusIcon width={13} height={13} /> Add Extra Exercise
         </Button>
       </div>
 

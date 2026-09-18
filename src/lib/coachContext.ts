@@ -1,5 +1,5 @@
 import type { AppState } from '../store/appState'
-import { AURA_TARGETS, DIET_TARGETS, HABITS, SKILL_UNLOCKS, WATER_TARGET_L, STEPS_TARGET, WEIGHT_BASELINE, WEIGHT_TARGET, calcAge, getTodayCfg } from '../data/plan'
+import { AURA_TARGETS, DIET_TARGETS, HABITS, SKILL_UNLOCKS, WATER_TARGET_L, STEPS_TARGET, WEIGHT_BASELINE, WEIGHT_TARGET, OFFICE, calcAge, getTodayCfg } from '../data/plan'
 import { LAWS } from '../data/workouts'
 
 /** Turns the live app state + the program's static rules into one grounded text block
@@ -45,15 +45,27 @@ export function buildCoachContext(state: AppState): string {
   const sortedStreak = [...state.streakDays].sort()
   const lastStreakDay = sortedStreak.at(-1) ?? 'none logged'
 
+  const bmi = state.heightCm ? weight / (state.heightCm / 100) ** 2 : null
+  const lastMeasurement = state.measurements.at(-1)
+  const measurementLine = lastMeasurement
+    ? Object.entries(lastMeasurement)
+        .filter(([k]) => k !== 'date')
+        .map(([k, v]) => `${k} ${v}cm`)
+        .join(', ')
+    : 'none logged'
+
   const laws = LAWS.map((l) => `${l.n}. ${l.text}`).join('\n')
 
   return `PROGRAM PHILOSOPHY (the "12 Laws of God Mode" — Abhishek's own training rules):
 ${laws}
 
 TODAY: ${cfg.label} (${new Date().toLocaleDateString()}). Diet targets today: ${targets.kcal} kcal, ${targets.p}g protein, ${targets.c}g carbs, ${targets.f}g fat.
+LIFE SCHEDULE: Abhishek works an office job ${OFFICE.start}–${OFFICE.end} on weekdays, ${OFFICE.commuteMinutes} min commute each way. Gym is 8:30 AM before office. He eats 4 meals/day (not 6-7) — this is a deliberate constraint from his real schedule, not something to suggest changing back.
 
 WEIGHT: current ${weight}kg (baseline ${WEIGHT_BASELINE}kg, target ${WEIGHT_TARGET}kg)${prevWeight ? `, previous entry ${prevWeight}kg` : ''}.
 Recent weigh-ins: ${recentWeights || 'none logged'}.
+BMI: ${bmi ? `${bmi.toFixed(1)} (height ${state.heightCm}cm)` : 'not set — no height logged yet'}.
+Latest body measurements: ${measurementLine}.
 
 SKILL PROGRESS (Aura):
 ${auraLines.join('\n')}

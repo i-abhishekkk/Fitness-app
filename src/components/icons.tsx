@@ -168,3 +168,9 @@ export const BotIcon = (p: IconProps) => (
     <path d="M2 13v2M22 13v2" />
   </svg>
 )
+export const RulerIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <rect x="3" y="7" width="18" height="10" rx="2" transform="rotate(0 12 12)" />
+    <path d="M7 7v3M11 7v3M15 7v3M19 7v3" />
+  </svg>
+)

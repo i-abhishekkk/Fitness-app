@@ -1,6 +1,7 @@
 import { motion } from 'motion/react'
 import { useState } from 'react'
-import { GlassCard, SectionTitle, ProgressBar, Toggle, TextField } from '../components/ui'
+import { Link } from 'react-router-dom'
+import { GlassCard, SectionTitle, ProgressBar, TextField } from '../components/ui'
 import { CountUp } from '../components/CountUp'
 import { CheckIcon, DropletIcon, FootprintsIcon, PillIcon, BoltIcon, SparklesIcon } from '../components/icons'
 import { useStore } from '../store/StoreContext'
@@ -43,11 +44,6 @@ export default function Today() {
   const toggleWaterCup = (i: number) => {
     haptic(6)
     setState((s) => ({ ...s, water: s.water === i + 1 ? i : i + 1 }))
-  }
-
-  const toggleSupp = (key: string) => {
-    haptic()
-    setState((s) => ({ ...s, supps: { ...s.supps, [key]: !s.supps[key] } }))
   }
 
   const logSteps = () => {
@@ -203,25 +199,21 @@ export default function Today() {
         </GlassCard>
       </div>
 
-      {/* SUPPLEMENTS */}
-      <GlassCard glow="var(--color-amber)">
-        <SectionTitle icon={<PillIcon width={14} height={14} />} color="var(--color-amber)">Supplements</SectionTitle>
-        <div>
-          {SUPPS.map((s) => {
-            const on = !!state.supps[s.key]
-            return (
-              <div key={s.key} className="flex items-start justify-between gap-2.5 border-b border-white/[0.06] py-3 last:border-none">
-                <div>
-                  <div className="text-[13px] font-bold">{s.name}</div>
-                  <div className="mt-0.5 text-[10.5px] leading-relaxed text-[var(--color-text-3)]">{s.dose} · {s.timing}</div>
-                  <div className="mt-0.5 font-[var(--font-mono)] text-[10px]" style={{ color: s.color }}>{s.days}</div>
-                </div>
-                <Toggle on={on} onToggle={() => toggleSupp(s.key)} />
-              </div>
-            )
-          })}
-        </div>
-      </GlassCard>
+      {/* SUPPLEMENTS — full toggle list lives in Diet > Supps only, this is just a status link */}
+      <Link to="/diet">
+        <GlassCard glow="var(--color-amber)" className="flex items-center gap-3">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl" style={{ background: 'var(--color-amber-dim)', color: 'var(--color-amber)' }}>
+            <PillIcon width={16} height={16} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[12.5px] font-bold">Supplements</div>
+            <div className="text-[10.5px] text-[var(--color-text-3)]">
+              {SUPPS.filter((s) => state.supps[s.key]).length}/{SUPPS.length} taken today · manage in Diet
+            </div>
+          </div>
+          <span className="text-[var(--color-text-3)]">→</span>
+        </GlassCard>
+      </Link>
     </div>
   )
 }

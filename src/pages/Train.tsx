@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { GlassCard, SectionTitle, Segmented, Callout, Divider, mix } from '../components/ui'
 import { ChevronDownIcon, ClockIcon, ShieldIcon, HeartIcon, SparklesIcon, DumbbellIcon } from '../components/icons'
@@ -46,6 +46,17 @@ export default function Train() {
   )
 }
 
+function parseClock(t: string): number {
+  const m = t.match(/(\d+):(\d+)\s*(AM|PM)/i)
+  if (!m) return -1
+  let h = parseInt(m[1], 10)
+  const min = parseInt(m[2], 10)
+  const ampm = m[3].toUpperCase()
+  if (ampm === 'AM' && h === 12) h = 0
+  if (ampm === 'PM' && h !== 12) h += 12
+  return h * 60 + min
+}
+
 function TimelineView() {
   const dow = getTodayDow()
   const cfg = getTodayCfg()
@@ -57,6 +68,19 @@ function TimelineView() {
     gym: 'var(--color-blue)',
     sleep: 'var(--color-text-3)',
   }
+
+  const [now, setNow] = useState(new Date())
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30_000)
+    return () => clearInterval(id)
+  }, [])
+
+  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+  let currentIdx = -1
+  events.forEach((e, i) => {
+    if (parseClock(e.t) <= nowMinutes) currentIdx = i
+  })
+
   return (
     <GlassCard>
       <SectionTitle icon={<ClockIcon width={15} height={15} />} trailing={<span className="font-[var(--font-mono)] text-[10px] text-[var(--color-text-3)]">{dow} · {cfg.label}</span>}>
@@ -64,25 +88,43 @@ function TimelineView() {
       </SectionTitle>
       <div className="relative pl-5">
         <div className="absolute left-[6px] top-1 bottom-1 w-px bg-gradient-to-b from-white/20 via-white/10 to-transparent" />
-        {events.map((e, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, x: -6 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: i * 0.04 }}
-            className="relative pb-5 last:pb-0"
-          >
-            <span
-              className="absolute -left-5 top-1 h-3 w-3 rounded-full border-2"
-              style={{ background: typeColor[e.type], borderColor: 'var(--color-bg-soft)' }}
-            />
-            <div className="flex items-baseline gap-2">
-              <span className="font-[var(--font-mono)] text-[10px] font-bold text-[var(--color-text-3)]">{e.t}</span>
-              <span className="text-[13px] font-bold">{e.label}</span>
-            </div>
-            <div className="mt-0.5 text-[11.5px] leading-relaxed text-[var(--color-text-2)]">{e.note}</div>
-          </motion.div>
-        ))}
+        {events.map((e, i) => {
+          const isNow = i === currentIdx
+          return (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, x: -6 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.04 }}
+              className="relative pb-5 last:pb-0"
+            >
+              {isNow && (
+                <motion.div
+                  layoutId="timeline-now"
+                  className="absolute -left-3 -right-2 -top-1.5 -bottom-1 rounded-xl"
+                  style={{ background: mix(typeColor[e.type], 10), border: `1px solid ${mix(typeColor[e.type], 30)}` }}
+                />
+              )}
+              <span className="absolute -left-5 top-1 flex h-3 w-3 items-center justify-center">
+                {isNow && <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60" style={{ background: typeColor[e.type] }} />}
+                <span className="relative h-3 w-3 rounded-full border-2" style={{ background: typeColor[e.type], borderColor: 'var(--color-bg-soft)' }} />
+              </span>
+              <div className="relative flex items-baseline gap-2">
+                <span className="font-[var(--font-mono)] text-[10px] font-bold text-[var(--color-text-3)]">{e.t}</span>
+                <span className="text-[13px] font-bold">{e.label}</span>
+                {isNow && (
+                  <span
+                    className="rounded-full px-1.5 py-0.5 font-[var(--font-mono)] text-[8.5px] font-bold uppercase tracking-wide"
+                    style={{ background: typeColor[e.type], color: '#04150c' }}
+                  >
+                    Now
+                  </span>
+                )}
+              </div>
+              <div className="relative mt-0.5 text-[11.5px] leading-relaxed text-[var(--color-text-2)]">{e.note}</div>
+            </motion.div>
+          )
+        })}
       </div>
     </GlassCard>
   )
@@ -210,8 +252,8 @@ function CardioView() {
           Zone 2 = hold a conversation, can't sing. HR ~{Math.round(max * 0.59)}–{Math.round(max * 0.66)} BPM. Burns fat, builds mitochondria, improves recovery.
         </Callout>
         <ul className="space-y-2 text-[12.5px] text-[var(--color-text-2)]">
-          <li>Incline treadmill walk post-Pull day (Mon) — 15 min, 10–12% grade.</li>
-          <li>Morning walk before M1 (Sun, optional) — 20 min fasted.</li>
+          <li>Zone 2 walk on Pull days — 15 min, 10–12% grade, evening after office.</li>
+          <li>Morning walk before Meal 1 (Sun, optional) — 20 min fasted.</li>
           <li>8,000 steps daily. Baseline Zone 2 volume.</li>
         </ul>
       </GlassCard>

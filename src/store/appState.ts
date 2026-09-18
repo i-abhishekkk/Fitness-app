@@ -21,6 +21,24 @@ export interface SessionEntry {
   dayType: string
   exercises: { name: string; sets: string; note?: string }[]
 }
+export interface MeasurementEntry {
+  date: string // ISO
+  chest?: number
+  waist?: number
+  hips?: number
+  arms?: number
+  thighs?: number
+  neck?: number
+}
+export interface FoodEntry {
+  id: string
+  date: string // ISO
+  name: string
+  p: number
+  c: number
+  f: number
+  k: number
+}
 
 export interface AppState {
   water: number
@@ -29,9 +47,10 @@ export interface AppState {
   supps: Record<string, boolean>
   sessions: SessionEntry[]
   weights: WeightEntry[]
-  measurements: Record<string, number>[]
+  measurements: MeasurementEntry[]
+  heightCm: number | null
   sleep: { date: string; hours: number }[]
-  food: unknown[]
+  food: FoodEntry[]
   macros: { p: number; c: number; f: number; k: number }
   streakDays: string[]
   skillUnlocks: Record<string, 'locked' | 'current' | 'unlocked'>
@@ -48,6 +67,7 @@ export const DEFAULTS: AppState = {
   sessions: [],
   weights: [],
   measurements: [],
+  heightCm: null,
   sleep: [],
   food: [],
   macros: { p: 0, c: 0, f: 0, k: 0 },

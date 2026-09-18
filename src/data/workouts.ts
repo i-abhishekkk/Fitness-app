@@ -19,10 +19,10 @@ export const SPLIT: SplitDay[] = [
   {
     dow: 'MON', color: 'var(--color-blue)', emoji: '🏋️',
     title: 'Pull Day A — Back, Biceps, Forearms',
-    subtitle: '7:00 AM · Skill: HS 6:40 AM · Zone 2 after',
-    banner: { kind: 'succ', text: 'Mon = Pull A. Post-gym: 15 min Zone 2 incline walk. Creatine 5g with M2.' },
+    subtitle: '8:30 AM · Skill: HS 6:45 AM · Zone 2 after office',
+    banner: { kind: 'succ', text: 'Mon = Pull A. Zone 2 walk in the evening after office. Creatine 5g with Meal 2.' },
     blocks: [
-      { heading: 'SKILL — 6:40 AM (20 min)', color: 'var(--color-purple)', exercises: [
+      { heading: 'SKILL — 6:45 AM (20 min)', color: 'var(--color-purple)', exercises: [
         { name: 'Wrist warm-up — circles, prayer stretch, rocks', sets: '3 min' },
         { name: 'Hollow body hold — ribs closed, toes pointed', sets: '4×30s' },
         { name: 'Chest-to-wall HS hold — push floor away', sets: '4×max hold' },
@@ -58,7 +58,7 @@ export const SPLIT: SplitDay[] = [
   {
     dow: 'TUE', color: 'var(--color-amber)', emoji: '🏋️',
     title: 'Push Day A — Chest, Shoulders, Triceps',
-    subtitle: '7:00 AM · HIIT finisher · No HS today',
+    subtitle: '8:30 AM · HIIT finisher · No HS today',
     banner: { kind: 'warn', text: 'Tue = Push A. HIIT finisher at end. Wrists rest today for Saturday HS.' },
     blocks: [
       { heading: 'Chest', exercises: [
@@ -87,9 +87,13 @@ export const SPLIT: SplitDay[] = [
   {
     dow: 'WED', color: 'var(--color-accent)', emoji: '🏋️',
     title: 'Leg Day — Heavy Squats + Hams + Glutes',
-    subtitle: '7:00 AM · Highest kcal day · Wrist specialist work',
-    banner: { kind: 'danger', text: 'Wed = Leg Day. 3900 kcal target. Chicken M4 + extra rice. Wrist specialist work at end.' },
+    subtitle: '8:30 AM · Highest kcal day · Wrist specialist work 6:45 AM',
+    banner: { kind: 'danger', text: 'Wed = Leg Day. 3900 kcal target. Chicken at lunch + extra rice. Wrist specialist work before gym.' },
     blocks: [
+      { heading: 'WRIST SPECIALIST — 6:45 AM (WED only)', color: 'var(--color-purple)', exercises: [
+        { name: 'Plate pinch — 30s hold, builds HS fingertip balance', sets: '3×30s' },
+        { name: 'Wrist roller — both directions', sets: '3 sets' },
+      ]},
       { heading: 'Quads', exercises: [
         { name: 'Barbell back squat — ATG depth, chest up', sets: '5×5 (heavy)' },
         { name: 'Leg press — full ROM, don\'t lock knees', sets: '4×12' },
@@ -104,19 +108,15 @@ export const SPLIT: SplitDay[] = [
         { name: 'Standing calf raise — full ROM, 3 sec down', sets: '4×20' },
         { name: 'Hanging leg raise — straight legs', sets: '3×12' },
       ]},
-      { heading: 'Wrist Specialist (WED only)', exercises: [
-        { name: 'Plate pinch — 30s hold, builds HS fingertip balance', sets: '3×30s' },
-        { name: 'Wrist roller — both directions', sets: '3 sets' },
-      ]},
     ],
   },
   {
     dow: 'THU', color: 'var(--color-teal)', emoji: '🏋️',
     title: 'Pull Day B — Deadlift + Back Thickness',
-    subtitle: '7:00 AM · Skill: HS 6:40 AM',
+    subtitle: '8:30 AM · Skill: HS 6:45 AM',
     banner: { kind: 'succ', text: 'Thu = Pull B. Focus on thickness. HS: try longest freestanding holds mid-week.' },
     blocks: [
-      { heading: 'SKILL — 6:40 AM', color: 'var(--color-purple)', exercises: [
+      { heading: 'SKILL — 6:45 AM', color: 'var(--color-purple)', exercises: [
         { name: 'Wrist warm-up + hollow body', sets: '4×30s' },
         { name: 'Chest-to-wall HS — shoulder taps', sets: '3×10 each' },
         { name: 'Freestanding kick-up attempts', sets: '10 attempts' },
@@ -143,7 +143,7 @@ export const SPLIT: SplitDay[] = [
   {
     dow: 'FRI', color: 'var(--color-green)', emoji: '🏋️',
     title: 'Push Day B + Bicep Finisher',
-    subtitle: '7:00 AM · Wrists resting for SAT',
+    subtitle: '8:30 AM · Wrists resting for SAT',
     banner: { kind: 'tip', text: 'Fri = Push B. End of week upper volume. Wrists rest today — no HS skill until Saturday morning.' },
     blocks: [
       { heading: 'Chest + Shoulders', exercises: [
@@ -255,7 +255,7 @@ export const LAWS = [
   { n: 3, text: 'Rest strictly: 90–120s compounds · 60s isolation · 45s abs/wrists.' },
   { n: 4, text: 'Progressive overload: +2.5kg compound every 1–2 weeks. Track every session.' },
   { n: 5, text: 'Hollow body is everything. It IS the handstand position. Master it first.' },
-  { n: 6, text: 'Post-workout window: M2 within 45 min of finishing. Non-negotiable.' },
+  { n: 6, text: 'Post-workout window: Meal 2 within 45 min of finishing. Non-negotiable.' },
   { n: 7, text: '7 hours minimum sleep. Where adaptation happens. Protect it.' },
   { n: 8, text: 'Wrist health = skill health. Never train through joint pain. Warm up every session.' },
   { n: 9, text: 'Legs are the throne. Never skip Wed. No exceptions.' },

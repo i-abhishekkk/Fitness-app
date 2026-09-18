@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react'
 import { AreaChart, Area, ResponsiveContainer, YAxis, Tooltip } from 'recharts'
 import { motion } from 'motion/react'
-import { GlassCard, SectionTitle, Segmented, ProgressBar, TextField, Button, IconButton, mix } from '../components/ui'
+import { GlassCard, SectionTitle, Segmented, ProgressBar, TextField, Button, mix } from '../components/ui'
 import { CountUp } from '../components/CountUp'
-import { TrophyIcon, SparklesIcon, ScaleIcon, XIcon, LockIcon, LoaderIcon, CheckCircleIcon, ShareIcon } from '../components/icons'
+import { TrophyIcon, SparklesIcon, ScaleIcon, XIcon, LockIcon, LoaderIcon, CheckCircleIcon, RulerIcon } from '../components/icons'
 import { useStore } from '../store/StoreContext'
 import { WEIGHT_BASELINE, WEIGHT_TARGET, AURA_TARGETS, SKILL_UNLOCKS } from '../data/plan'
+import type { MeasurementEntry } from '../store/appState'
 
-type Top = 'weight' | 'streak' | 'goals'
+type Top = 'weight' | 'body' | 'streak' | 'goals'
 
 export default function Progress() {
   const [top, setTop] = useState<Top>('weight')
@@ -18,13 +19,130 @@ export default function Progress() {
         onChange={setTop}
         options={[
           { value: 'weight', label: 'Weight' },
+          { value: 'body', label: 'Body' },
           { value: 'streak', label: 'Streak' },
           { value: 'goals', label: 'Goals' },
         ]}
       />
       {top === 'weight' && <WeightView />}
+      {top === 'body' && <BodyView />}
       {top === 'streak' && <StreakView />}
       {top === 'goals' && <GoalsView />}
+    </div>
+  )
+}
+
+function bmiCategory(bmi: number): { label: string; color: string } {
+  if (bmi < 18.5) return { label: 'Underweight', color: 'var(--color-blue)' }
+  if (bmi < 25) return { label: 'Normal', color: 'var(--color-green)' }
+  if (bmi < 30) return { label: 'Overweight', color: 'var(--color-amber)' }
+  return { label: 'Obese', color: 'var(--color-accent)' }
+}
+
+const MEASUREMENT_FIELDS: { key: keyof Omit<MeasurementEntry, 'date'>; label: string }[] = [
+  { key: 'chest', label: 'Chest (cm)' },
+  { key: 'waist', label: 'Waist (cm)' },
+  { key: 'hips', label: 'Hips (cm)' },
+  { key: 'arms', label: 'Arms (cm)' },
+  { key: 'thighs', label: 'Thighs (cm)' },
+  { key: 'neck', label: 'Neck (cm)' },
+]
+
+function BodyView() {
+  const { state, setState } = useStore()
+  const [heightInput, setHeightInput] = useState(state.heightCm ? String(state.heightCm) : '')
+  const [fields, setFields] = useState<Record<string, string>>({})
+
+  const currentWeight = state.weights.at(-1)?.kg ?? WEIGHT_BASELINE
+  const bmi = state.heightCm ? currentWeight / (state.heightCm / 100) ** 2 : null
+  const cat = bmi ? bmiCategory(bmi) : null
+
+  const saveHeight = () => {
+    const cm = parseFloat(heightInput)
+    if (Number.isNaN(cm) || cm <= 0) return
+    setState((s) => ({ ...s, heightCm: cm }))
+  }
+
+  const logMeasurements = () => {
+    const entry: MeasurementEntry = { date: new Date().toISOString() }
+    let any = false
+    for (const f of MEASUREMENT_FIELDS) {
+      const v = parseFloat(fields[f.key] ?? '')
+      if (!Number.isNaN(v) && v > 0) {
+        entry[f.key] = v
+        any = true
+      }
+    }
+    if (!any) return
+    setState((s) => ({ ...s, measurements: [...s.measurements, entry] }))
+    setFields({})
+  }
+
+  const delMeasurement = (idx: number) => setState((s) => ({ ...s, measurements: s.measurements.filter((_, i) => i !== idx) }))
+
+  return (
+    <div className="space-y-3">
+      <GlassCard glow={cat?.color ?? 'var(--color-blue)'}>
+        <SectionTitle icon={<ScaleIcon width={14} height={14} />} color={cat?.color}>Body Mass Index</SectionTitle>
+        {bmi ? (
+          <div className="flex items-center gap-4">
+            <div>
+              <div className="font-[var(--font-mono)] text-3xl font-extrabold" style={{ color: cat?.color }}>
+                <CountUp value={bmi} decimals={1} />
+              </div>
+              <div className="mt-0.5 text-[11px] font-semibold" style={{ color: cat?.color }}>{cat?.label}</div>
+            </div>
+            <div className="flex-1 text-[10.5px] leading-relaxed text-[var(--color-text-3)]">
+              Computed live from your current weight ({currentWeight.toFixed(1)}kg) and height ({state.heightCm}cm) — updates automatically as either changes.
+            </div>
+          </div>
+        ) : (
+          <div className="text-[12px] text-[var(--color-text-3)]">Add your height below to see BMI.</div>
+        )}
+        <div className="mt-3 flex gap-2">
+          <TextField type="number" value={heightInput} onChange={(e) => setHeightInput(e.target.value)} placeholder="Height (cm)" />
+          <Button variant="secondary" color="var(--color-blue)" onClick={saveHeight}>Save</Button>
+        </div>
+      </GlassCard>
+
+      <GlassCard glow="var(--color-teal)">
+        <SectionTitle icon={<RulerIcon width={14} height={14} />} color="var(--color-teal)">Log Measurements</SectionTitle>
+        <div className="grid grid-cols-2 gap-2.5">
+          {MEASUREMENT_FIELDS.map((f) => (
+            <TextField
+              key={f.key}
+              type="number"
+              value={fields[f.key] ?? ''}
+              onChange={(e) => setFields((s) => ({ ...s, [f.key]: e.target.value }))}
+              placeholder={f.label}
+            />
+          ))}
+        </div>
+        <div className="mt-3">
+          <Button full color="var(--color-teal)" onClick={logMeasurements}>Log Today's Measurements</Button>
+        </div>
+      </GlassCard>
+
+      {state.measurements.length > 0 && (
+        <GlassCard>
+          <SectionTitle>History</SectionTitle>
+          {state.measurements.slice().reverse().map((m, i) => (
+            <div key={i} className="border-b border-white/[0.06] py-2.5 last:border-none">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-[var(--color-text-3)]">{new Date(m.date).toLocaleDateString()}</span>
+                <button onClick={() => delMeasurement(state.measurements.length - 1 - i)} className="text-[var(--color-text-3)] transition-colors hover:text-[var(--color-accent)]">
+                  <XIcon width={13} height={13} />
+                </button>
+              </div>
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 font-[var(--font-mono)] text-[11px] text-[var(--color-text-2)]">
+                {MEASUREMENT_FIELDS.filter((f) => m[f.key] != null).map((f) => (
+                  <span key={f.key}>{f.label.split(' ')[0]}: {m[f.key]}cm</span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </GlassCard>
+      )}
     </div>
   )
 }
@@ -251,16 +369,6 @@ function GoalsView() {
   const current = state.weights.at(-1)?.kg ?? WEIGHT_BASELINE
   const wpct = Math.min(100, Math.round(((current - WEIGHT_BASELINE) / (WEIGHT_TARGET - WEIGHT_BASELINE)) * 100))
   const a = state.aura
-  const streak = state.streakDays.length
-
-  const shareProgress = async () => {
-    const text = `GOD MODE progress — ${current.toFixed(1)}kg (target ${WEIGHT_TARGET}kg), ${streak}-day streak, HS hold ${a.hsRaw}s, ${a.puRaw} pull-ups. 💪`
-    if (navigator.share) {
-      await navigator.share({ text, title: 'GOD MODE Progress' }).catch(() => {})
-    } else {
-      await navigator.clipboard.writeText(text).catch(() => {})
-    }
-  }
 
   const skills = [
     { name: `Handstand hold (${AURA_TARGETS.hs}s goal)`, raw: `${a.hsRaw}s`, target: AURA_TARGETS.hs, val: a.hsRaw, color: 'var(--color-purple)' },
@@ -277,15 +385,8 @@ function GoalsView() {
         className="glass-strong relative overflow-hidden rounded-2xl p-5"
       >
         <div aria-hidden className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-[var(--color-accent)] opacity-20 blur-3xl" />
-        <div className="relative flex items-center gap-1.5">
-          <span className="flex items-center gap-1.5 font-[var(--font-mono)] text-[10px] font-bold tracking-[1.5px] text-[var(--color-accent)]">
-            <SparklesIcon width={12} height={12} /> TRANSFORMATION TARGET
-          </span>
-          <span className="ml-auto">
-            <IconButton label="Share progress" onClick={shareProgress}>
-              <ShareIcon width={14} height={14} />
-            </IconButton>
-          </span>
+        <div className="relative flex items-center gap-1.5 font-[var(--font-mono)] text-[10px] font-bold tracking-[1.5px] text-[var(--color-accent)]">
+          <SparklesIcon width={12} height={12} /> TRANSFORMATION TARGET
         </div>
         <div className="relative mt-1.5 font-[var(--font-display)] text-2xl font-semibold tracking-tight">
           {WEIGHT_BASELINE}kg → {WEIGHT_TARGET}kg Lean

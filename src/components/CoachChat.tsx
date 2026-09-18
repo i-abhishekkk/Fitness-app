@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { BotIcon, SendIcon, SparklesIcon, XIcon } from './icons'
 import { Button } from './ui'
+import { DraggableFab } from './DraggableFab'
 import { useStore } from '../store/StoreContext'
 import { buildCoachContext } from '../lib/coachContext'
 import { askCoach, type CoachChatMessage } from '../lib/coachApi'
@@ -59,22 +60,16 @@ export function CoachChat() {
   return (
     <>
       {user && (
-        <motion.button
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={() => setOpen(true)}
-          aria-label="Open GOD MODE Coach"
-          className="fixed z-40 grid h-14 w-14 place-items-center rounded-full text-white"
+        <DraggableFab
+          label="Open GOD MODE Coach"
+          onActivate={() => setOpen(true)}
           style={{
-            right: 'max(18px, calc((100vw - 460px) / 2 + 18px))',
-            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 92px)',
             background: 'linear-gradient(135deg, var(--color-purple), var(--color-accent))',
             boxShadow: '0 10px 30px -8px color-mix(in srgb, var(--color-purple) 60%, transparent)',
           }}
         >
           <SparklesIcon width={22} height={22} />
-        </motion.button>
+        </DraggableFab>
       )}
 
       <AnimatePresence>
