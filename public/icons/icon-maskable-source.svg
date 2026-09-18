@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="ring" x1="80" y1="80" x2="432" y2="432" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#b27cff"/>
+      <stop offset="1" stop-color="#ff4b36"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="256" cy="256" r="150" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ff4b36" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ff4b36" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- full-bleed square background — required for maskable icons, the OS applies its own shape mask -->
+  <rect width="512" height="512" fill="#07080c"/>
+
+  <!-- ring mark kept inside the ~80%-diameter safe zone (radius ≈205 from center) -->
+  <circle cx="256" cy="256" r="128" fill="url(#glow)"/>
+  <circle cx="256" cy="256" r="128" fill="none" stroke="url(#ring)" stroke-width="28" stroke-linecap="round"/>
+  <circle cx="256" cy="256" r="82" fill="none" stroke="#22d3c7" stroke-width="14" stroke-opacity="0.85" stroke-linecap="round" stroke-dasharray="370" stroke-dashoffset="100"/>
+  <circle cx="256" cy="256" r="26" fill="#f6f5f3"/>
+</svg>
