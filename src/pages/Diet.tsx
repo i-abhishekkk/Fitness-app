@@ -261,7 +261,7 @@ function SuppsDetail() {
     <GlassCard glow="var(--color-amber)">
       <SectionTitle icon={<PillIcon width={14} height={14} />} color="var(--color-amber)">Supplement Protocol</SectionTitle>
       <Callout kind="tip">
-        Timing is everything. Creatine with carbs post-workout. Multivitamin + collagen daily with Meal 1. B12 with fat. D3 once a week with a fat meal. ZMA before sleep.
+        Timing is everything — exact clock times below match your push notifications, so you never have to guess.
       </Callout>
       {SUPPS.map((s) => {
         const on = !!state.supps[s.key]

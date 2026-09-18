@@ -207,13 +207,13 @@ export interface Supp {
   color: string
 }
 export const SUPPS: Supp[] = [
-  { key: 'creatine', name: 'Creatine Monohydrate', dose: '5g', timing: 'With Meal 2 post-workout (with carbs)', days: 'Training days', color: 'var(--color-blue)' },
-  { key: 'multivitamin', name: 'Multivitamin', dose: '1 tablet', timing: 'With Meal 1', days: 'Daily', color: 'var(--color-teal)' },
-  { key: 'collagen', name: 'Collagen Peptides', dose: '10g', timing: 'With Meal 1 or in water/coffee', days: 'Daily', color: 'var(--color-amber)' },
-  { key: 'b12', name: 'Vitamin B12', dose: '1000mcg methylcobalamin', timing: 'With Meal 2 (fat helps absorption)', days: 'Daily', color: 'var(--color-accent)' },
-  { key: 'd3', name: 'Vitamin D3 + K2', dose: '2000–4000 IU', timing: 'With Meal 4 (fat meal)', days: 'Once a week', color: 'var(--color-amber)' },
-  { key: 'omega', name: 'Omega-3 Fish Oil', dose: '1–2g EPA+DHA', timing: 'With Meal 3 or Meal 4 (with fat)', days: 'Daily', color: 'var(--color-green)' },
-  { key: 'zma', name: 'ZMA (Zinc + Magnesium)', dose: '25mg Zn + 200mg Mg', timing: '30 min before sleep', days: 'Daily', color: 'var(--color-purple)' },
+  { key: 'collagen', name: 'Collagen Peptides', dose: '10g', timing: '8:00 AM · 30 min before gym', days: 'Daily', color: 'var(--color-amber)' },
+  { key: 'creatine', name: 'Creatine Monohydrate', dose: '5g', timing: '8:15 AM · on your way to gym', days: 'Training days', color: 'var(--color-blue)' },
+  { key: 'multivitamin', name: 'Multivitamin', dose: '1 tablet', timing: '10:00 AM · right after post-workout meal', days: 'Daily', color: 'var(--color-teal)' },
+  { key: 'omega', name: 'Omega-3 Fish Oil', dose: '1–2g EPA+DHA', timing: '10:00 AM · right after post-workout meal', days: 'Daily', color: 'var(--color-green)' },
+  { key: 'b12', name: 'Vitamin B12', dose: '1000mcg methylcobalamin', timing: '2:00 PM · after afternoon meal', days: 'Daily', color: 'var(--color-accent)' },
+  { key: 'zma', name: 'Magnesium (ZMA)', dose: '25mg Zn + 200mg Mg', timing: '10:30 PM · 30 min before sleep', days: 'Daily', color: 'var(--color-purple)' },
+  { key: 'd3', name: 'Vitamin D3 + K2', dose: '2000–4000 IU', timing: '2:15 PM · Sunday, post-lunch', days: 'Weekly (Sunday)', color: 'var(--color-amber)' },
 ]
 
 export interface Habit {
