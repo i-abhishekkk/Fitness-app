@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { GlassCard, SectionTitle, ProgressBar, TextField } from '../components/ui'
 import { CountUp } from '../components/CountUp'
-import { CheckIcon, DropletIcon, FootprintsIcon, PillIcon, BoltIcon, SparklesIcon } from '../components/icons'
+import { CheckIcon, DropletIcon, FootprintsIcon, PillIcon, BoltIcon, SparklesIcon, BotIcon } from '../components/icons'
 import { useStore } from '../store/StoreContext'
 import { haptic } from '../lib/haptics'
 import {
@@ -21,6 +21,29 @@ const AURA_META = [
   { key: 'pu', raw: 'puRaw', label: 'Pull-ups / C2B', color: 'var(--color-blue)', unit: (v: number) => `Best ${v} pull-ups` },
   { key: 'cv', raw: 'cvRaw', label: 'Cardio', color: 'var(--color-green)', unit: (v: number) => `Best ${v} stair sets` },
 ] as const
+
+const STALE_AFTER_DAYS = 9
+
+function WeeklyReviewCard() {
+  const { state } = useStore()
+  const review = state.weeklyReview
+  if (!review) return null
+  const ageDays = (Date.now() - new Date(review.generatedAt).getTime()) / 86_400_000
+  if (ageDays > STALE_AFTER_DAYS) return null
+
+  return (
+    <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
+      <GlassCard glow="var(--color-purple)">
+        <SectionTitle icon={<BotIcon width={14} height={14} />} color="var(--color-purple)" trailing={
+          <span className="font-[var(--font-mono)] text-[9px] text-[var(--color-text-3)]">{new Date(review.generatedAt).toLocaleDateString()}</span>
+        }>
+          Your Weekly Review
+        </SectionTitle>
+        <div className="text-[12.5px] leading-relaxed text-[var(--color-text-2)]">{review.text}</div>
+      </GlassCard>
+    </motion.div>
+  )
+}
 
 export default function Today() {
   const { state, setState } = useStore()
@@ -64,6 +87,8 @@ export default function Today() {
         <BoltIcon width={15} height={15} style={{ color: 'var(--color-accent)' }} />
         {cfg.label} — {doneCount}/{items.length} missions locked in
       </motion.div>
+
+      <WeeklyReviewCard />
 
       {/* AURA */}
       <GlassCard glow="var(--color-purple)">

@@ -1,14 +1,14 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AreaChart, Area, ResponsiveContainer, YAxis, Tooltip } from 'recharts'
 import { motion } from 'motion/react'
-import { GlassCard, SectionTitle, Segmented, ProgressBar, TextField, Button, mix } from '../components/ui'
+import { GlassCard, SectionTitle, Segmented, SelectField, ProgressBar, TextField, Button, mix } from '../components/ui'
 import { CountUp } from '../components/CountUp'
-import { TrophyIcon, SparklesIcon, ScaleIcon, XIcon, LockIcon, LoaderIcon, CheckCircleIcon, RulerIcon } from '../components/icons'
+import { TrophyIcon, SparklesIcon, ScaleIcon, XIcon, LockIcon, LoaderIcon, CheckCircleIcon, RulerIcon, DumbbellIcon } from '../components/icons'
 import { useStore } from '../store/StoreContext'
 import { WEIGHT_BASELINE, WEIGHT_TARGET, AURA_TARGETS, SKILL_UNLOCKS } from '../data/plan'
 import type { MeasurementEntry } from '../store/appState'
 
-type Top = 'weight' | 'body' | 'streak' | 'goals'
+type Top = 'weight' | 'body' | 'lifts' | 'streak' | 'goals'
 
 export default function Progress() {
   const [top, setTop] = useState<Top>('weight')
@@ -20,12 +20,14 @@ export default function Progress() {
         options={[
           { value: 'weight', label: 'Weight' },
           { value: 'body', label: 'Body' },
+          { value: 'lifts', label: 'Lifts' },
           { value: 'streak', label: 'Streak' },
           { value: 'goals', label: 'Goals' },
         ]}
       />
       {top === 'weight' && <WeightView />}
       {top === 'body' && <BodyView />}
+      {top === 'lifts' && <LiftsView />}
       {top === 'streak' && <StreakView />}
       {top === 'goals' && <GoalsView />}
     </div>
@@ -233,6 +235,117 @@ function WeightView() {
               </div>
             ))}
           </div>
+        )}
+      </GlassCard>
+    </div>
+  )
+}
+
+/** Epley formula — the standard estimated-1RM approximation used across strength coaching,
+ *  accurate enough for tracking trend direction (not meant as a literal max-out prediction). */
+function estimate1RM(weightKg: number, reps: number): number {
+  return weightKg * (1 + reps / 30)
+}
+
+function LiftsView() {
+  const { state } = useStore()
+  const [metric, setMetric] = useState<'e1rm' | 'volume'>('e1rm')
+
+  const exerciseNames = useMemo(() => {
+    const set = new Set<string>()
+    state.sessions.forEach((s) => s.exercises.forEach((e) => e.raw && set.add(e.name)))
+    return Array.from(set).sort()
+  }, [state.sessions])
+
+  const [selected, setSelected] = useState(exerciseNames[0] ?? '')
+  useEffect(() => {
+    if (exerciseNames.length && !exerciseNames.includes(selected)) setSelected(exerciseNames[0])
+  }, [exerciseNames, selected])
+
+  const points = useMemo(() => {
+    return state.sessions
+      .filter((s) => s.exercises.some((e) => e.name === selected && e.raw))
+      .map((s) => {
+        const ex = s.exercises.find((e) => e.name === selected)!
+        const { sets, reps, weightKg } = ex.raw!
+        return {
+          rawDate: s.date,
+          date: new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          e1rm: Math.round(estimate1RM(weightKg, reps) * 10) / 10,
+          volume: sets * reps * weightKg,
+        }
+      })
+      .sort((a, b) => new Date(a.rawDate).getTime() - new Date(b.rawDate).getTime())
+  }, [state.sessions, selected])
+
+  const latest = points.at(-1)
+  const best = points.length ? Math.max(...points.map((p) => p[metric])) : 0
+  const color = metric === 'e1rm' ? 'var(--color-accent)' : 'var(--color-teal)'
+
+  return (
+    <div className="space-y-3">
+      <GlassCard glow={color}>
+        <SectionTitle icon={<DumbbellIcon width={14} height={14} />} color={color}>Strength Progression</SectionTitle>
+        {exerciseNames.length === 0 ? (
+          <div className="py-6 text-center text-[12px] leading-relaxed text-[var(--color-text-3)]">
+            No structured sets logged yet — fill in Sets, Reps, Weight (and RPE) for an exercise in Tracker → Log to see its progression here.
+          </div>
+        ) : (
+          <>
+            <div className="mb-3">
+              <SelectField label="Exercise" value={selected} onChange={setSelected} options={exerciseNames} />
+            </div>
+            <Segmented
+              value={metric}
+              onChange={setMetric}
+              options={[
+                { value: 'e1rm', label: 'Est. 1RM' },
+                { value: 'volume', label: 'Volume' },
+              ]}
+            />
+            <div className="my-3 grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-white/[0.03] p-3 text-center">
+                <div className="font-[var(--font-mono)] text-xl font-extrabold" style={{ color }}>
+                  <CountUp value={latest?.[metric] ?? 0} decimals={metric === 'e1rm' ? 1 : 0} suffix={metric === 'e1rm' ? ' kg' : ' kg total'} />
+                </div>
+                <div className="mt-0.5 text-[9px] uppercase tracking-wide text-[var(--color-text-3)]">Latest session</div>
+              </div>
+              <div className="rounded-xl bg-white/[0.03] p-3 text-center">
+                <div className="font-[var(--font-mono)] text-xl font-extrabold" style={{ color }}>
+                  <CountUp value={best} decimals={metric === 'e1rm' ? 1 : 0} suffix={metric === 'e1rm' ? ' kg' : ' kg total'} />
+                </div>
+                <div className="mt-0.5 text-[9px] uppercase tracking-wide text-[var(--color-text-3)]">Best so far</div>
+              </div>
+            </div>
+            {points.length >= 2 ? (
+              <div className="h-40">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={points} margin={{ top: 8, right: 4, bottom: 0, left: 4 }}>
+                    <defs>
+                      <linearGradient id="liftFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={color} stopOpacity={0.45} />
+                        <stop offset="100%" stopColor={color} stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <YAxis hide domain={['dataMin - 2', 'dataMax + 2']} />
+                    <Tooltip
+                      contentStyle={{ background: 'rgba(18,20,28,0.92)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 12, fontSize: 11, backdropFilter: 'blur(8px)' }}
+                      labelStyle={{ color: 'var(--color-text-2)' }}
+                      itemStyle={{ color }}
+                    />
+                    <Area type="monotone" dataKey={metric} stroke={color} strokeWidth={2.5} fill="url(#liftFill)" dot={{ r: 3, fill: color, strokeWidth: 0 }} activeDot={{ r: 5 }} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="flex min-h-[140px] items-center justify-center rounded-xl bg-white/[0.03] text-[11.5px] text-[var(--color-text-3)]">
+                Log this exercise with full Sets/Reps/Weight 2+ times to see the trend
+              </div>
+            )}
+            <div className="mt-3 text-[10px] leading-relaxed text-[var(--color-text-3)]">
+              Est. 1RM uses the Epley formula (weight × (1 + reps/30)) — a trend indicator, not a literal max-out prediction. Volume is sets × reps × weight for that session.
+            </div>
+          </>
         )}
       </GlassCard>
     </div>

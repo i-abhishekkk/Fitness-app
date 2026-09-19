@@ -33,12 +33,30 @@ registerRoute(
 
 // Push notifications received while the app isn't in the foreground surface here —
 // foreground messages are handled separately in lib/firebase.ts's watchForegroundPush.
+// Reminders arrive as data-only messages (no top-level `notification` field) — that's
+// deliberate, see the comment in worker/src/reminders.ts — so this is the ONLY place
+// that ever calls showNotification for them. A `notification` payload would make the
+// browser auto-display it too, producing a duplicate.
 if (firebaseEnabled) {
   const app = initializeApp(firebaseConfig)
   const messaging = getMessaging(app)
   onBackgroundMessage(messaging, (payload) => {
-    const title = payload.notification?.title ?? 'GOD MODE'
-    const body = payload.notification?.body
-    self.registration.showNotification(title, { body, icon: 'icons/icon-192.png' })
+    const title = payload.data?.title ?? payload.notification?.title ?? 'GOD MODE'
+    const body = payload.data?.body ?? payload.notification?.body
+    const link = payload.data?.link ?? 'today'
+    self.registration.showNotification(title, { body, icon: 'icons/icon-192.png', data: { link } })
   })
 }
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const link = (event.notification.data?.link as string) ?? 'today'
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if ('focus' in client) return client.focus()
+      }
+      return self.clients.openWindow(link)
+    }),
+  )
+})

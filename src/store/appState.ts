@@ -15,11 +15,19 @@ export interface WeightEntry {
   date: string // ISO
   kg: number
 }
+export interface SessionExercise {
+  name: string
+  sets: string
+  note?: string
+  // Structured numeric log, present only for split exercises logged via the Sets/Reps/Weight/RPE
+  // grid in Tracker — powers the e1RM/volume graphs and RPE-vs-target comparison in Progress.
+  raw?: { sets: number; reps: number; weightKg: number; rpe?: number }
+}
 export interface SessionEntry {
   id: string
   date: string
   dayType: string
-  exercises: { name: string; sets: string; note?: string }[]
+  exercises: SessionExercise[]
 }
 export interface MeasurementEntry {
   date: string // ISO
@@ -57,6 +65,10 @@ export interface AppState {
   habits: Record<string, boolean>
   aura: AuraState
   push: { enabled: boolean; token: string | null }
+  // Written server-side by the Worker's Sunday cron job — see worker/src/reminders.ts's
+  // generateWeeklyReview. Only picked up client-side on the next fresh sign-in load (same
+  // limitation as the `push` field above), not live-synced.
+  weeklyReview: { text: string; generatedAt: string } | null
 }
 
 export const DEFAULTS: AppState = {
@@ -76,6 +88,7 @@ export const DEFAULTS: AppState = {
   habits: {},
   aura: { hs: 0, mu: 0, pu: 0, cv: 0, hsRaw: 0, muRaw: 0, puRaw: 0, cvRaw: 0, c2bRaw: 0, scapRaw: 0 },
   push: { enabled: false, token: null },
+  weeklyReview: null,
 }
 
 const STORAGE_KEY = 'gm5'

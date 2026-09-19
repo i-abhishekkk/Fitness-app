@@ -16,6 +16,11 @@ export interface ReminderEntry {
   days?: number[] // 0=Sun..6=Sat; omit for every day
   title: string
   body: string
+  // When true, sendScheduledReminder doesn't just push this static title/body — it first has
+  // the AI Coach write an actual weekly review grounded in the last 7 days of the user's own
+  // logged data (see generateWeeklyReview in reminders.ts), saves that to Firestore, and only
+  // then sends the push (as a teaser linking to it, not the static body below).
+  ai?: boolean
 }
 
 const WEEKDAYS = [1, 2, 3, 4, 5]
@@ -25,6 +30,9 @@ const SUNDAY = [0]
 export const REMINDERS: ReminderEntry[] = [
   // --- Weekly body check-in — Sunday 9:00 AM ---
   { hour: 9, minute: 0, days: SUNDAY, title: '📏 Weekly Check-in', body: "It's Sunday — log this week's weight and body measurements (Progress → Body)." },
+
+  // --- AI Coach's weekly review — Sunday 8:00 PM, after the day's data is logged ---
+  { hour: 20, minute: 0, days: SUNDAY, ai: true, title: '🧠 Your Weekly Review', body: 'Your AI Coach wrote up your week — open the app to see it.' },
 
   // --- Water — 6x/day, every day ---
   { hour: 7, minute: 0, title: '💧 Water #1 of 6', body: 'Start hydrating — first glass of the day.' },

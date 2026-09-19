@@ -116,7 +116,7 @@ export default {
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
     const serviceAccount = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT_KEY)
     ctx.waitUntil(
-      sendScheduledReminder(new Date(event.scheduledTime), serviceAccount)
+      sendScheduledReminder(new Date(event.scheduledTime), serviceAccount, env.ANTHROPIC_API_KEY)
         .then((result) => {
           if (result) console.log(result)
         })

@@ -98,9 +98,10 @@ export function watchForegroundPush(): () => void {
       if (!supported || !app) return
       messaging = getMessaging(app)
       unsub = onMessage(messaging, (payload) => {
-        const title = payload.notification?.title ?? 'GOD MODE'
-        const body = payload.notification?.body
-        navigator.serviceWorker.ready.then((reg) => reg.showNotification(title, { body, icon: 'icons/icon-192.png' }))
+        const title = payload.data?.title ?? payload.notification?.title ?? 'GOD MODE'
+        const body = payload.data?.body ?? payload.notification?.body
+        const link = payload.data?.link ?? 'today'
+        navigator.serviceWorker.ready.then((reg) => reg.showNotification(title, { body, icon: 'icons/icon-192.png', data: { link } }))
       })
     })
     .catch(() => {})

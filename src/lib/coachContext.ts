@@ -88,6 +88,6 @@ SKILL UNLOCK TRACKER: ${skillUnlocks}.
 
 RECENT WORKOUT SESSIONS (most recent first):
 ${recentSessions || 'no sessions logged yet'}
-
+${state.weeklyReview ? `\nLAST AUTOMATED WEEKLY REVIEW (${new Date(state.weeklyReview.generatedAt).toLocaleDateString()}): ${state.weeklyReview.text}\n` : ''}
 Abhishek's age: ${calcAge()}.`
 }

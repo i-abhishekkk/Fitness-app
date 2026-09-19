@@ -8,7 +8,8 @@ import { enablePush, disablePush } from '../lib/firebase'
 import { haptic } from '../lib/haptics'
 import { HABITS, getTodayDow } from '../data/plan'
 import { SPLIT } from '../data/workouts'
-import type { SessionEntry } from '../store/appState'
+import { getCurrentMesoWeek } from '../data/periodization'
+import type { SessionEntry, SessionExercise } from '../store/appState'
 
 type Top = 'session' | 'history' | 'sleep' | 'habits' | 'data'
 
@@ -53,14 +54,17 @@ function LogSession() {
   const [c2b, setC2b] = useState('')
   const [scap, setScap] = useState('')
   const [notes, setNotes] = useState('')
-  const [logged, setLogged] = useState<Record<string, { sets: string; reps: string; weight: string }>>({})
+  const [logged, setLogged] = useState<Record<string, { sets: string; reps: string; weight: string; rpe: string }>>({})
   const [extra, setExtra] = useState<{ name: string; sets: string }[]>([])
 
   const splitDay = SPLIT.find((d) => `${d.dow} — ${d.title}` === day)
   const listedExercises = splitDay ? splitDay.blocks.flatMap((b) => b.exercises.map((e) => e.name)) : []
+  const meso = getCurrentMesoWeek()
+  const targetRpeMatch = meso.rpeTarget.match(/RPE\s*(\d+)/)
+  const targetRpe = targetRpeMatch ? Number(targetRpeMatch[1]) : null
 
-  const setField = (name: string, field: 'sets' | 'reps' | 'weight', v: string) =>
-    setLogged((l) => ({ ...l, [name]: { ...(l[name] ?? { sets: '', reps: '', weight: '' }), [field]: v } }))
+  const setField = (name: string, field: 'sets' | 'reps' | 'weight' | 'rpe', v: string) =>
+    setLogged((l) => ({ ...l, [name]: { ...(l[name] ?? { sets: '', reps: '', weight: '', rpe: '' }), [field]: v } }))
 
   const addExtraRow = () => setExtra((e) => [...e, { name: '', sets: '' }])
   const updateExtra = (i: number, field: 'name' | 'sets', v: string) =>
@@ -73,8 +77,12 @@ function LogSession() {
       .map((name) => {
         const l = logged[name]
         if (!l || (!l.sets && !l.reps && !l.weight)) return null
-        const parts = [l.sets && `${l.sets} sets`, l.reps && `${l.reps} reps`, l.weight && `${l.weight}kg`].filter(Boolean).join(' × ')
-        return { name, sets: parts || '—' }
+        const parts = [l.sets && `${l.sets} sets`, l.reps && `${l.reps} reps`, l.weight && `${l.weight}kg`, l.rpe && `RPE ${l.rpe}`].filter(Boolean).join(' × ')
+        const entry: SessionExercise = { name, sets: parts || '—' }
+        if (l.sets && l.reps && l.weight) {
+          entry.raw = { sets: Number(l.sets), reps: Number(l.reps), weightKg: Number(l.weight), rpe: l.rpe ? Number(l.rpe) : undefined }
+        }
+        return entry
       })
       .filter(Boolean) as SessionEntry['exercises']
 
@@ -118,16 +126,25 @@ function LogSession() {
 
       {listedExercises.length > 0 && (
         <>
-          <div className="mb-2 font-[var(--font-mono)] text-[10px] font-bold uppercase tracking-[1.5px] text-[var(--color-text-3)]">
-            {day.split(' — ')[1] ?? 'Today'}'s Exercises
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="font-[var(--font-mono)] text-[10px] font-bold uppercase tracking-[1.5px] text-[var(--color-text-3)]">
+              {day.split(' — ')[1] ?? 'Today'}'s Exercises
+            </div>
+            {targetRpe && (
+              <div className="font-[var(--font-mono)] text-[9.5px] font-bold" style={{ color: meso.color }}>
+                Week {meso.week} target: RPE {targetRpe}
+              </div>
+            )}
           </div>
           <div className="mb-4 space-y-2.5">
             {listedExercises.map((name) => {
-              const l = logged[name] ?? { sets: '', reps: '', weight: '' }
+              const l = logged[name] ?? { sets: '', reps: '', weight: '', rpe: '' }
+              const rpeNum = l.rpe ? Number(l.rpe) : null
+              const rpeDelta = rpeNum && targetRpe ? rpeNum - targetRpe : null
               return (
                 <div key={name} className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
                   <div className="mb-2 text-[12px] font-semibold leading-snug">{name}</div>
-                  <div className="grid grid-cols-3 gap-1.5">
+                  <div className="grid grid-cols-4 gap-1.5">
                     <input
                       value={l.sets}
                       onChange={(e) => setField(name, 'sets', e.target.value)}
@@ -149,7 +166,21 @@ function LogSession() {
                       placeholder="kg"
                       className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-[11.5px] outline-none focus:border-[var(--color-accent)]"
                     />
+                    <input
+                      value={l.rpe}
+                      onChange={(e) => setField(name, 'rpe', e.target.value)}
+                      type="number"
+                      min={1}
+                      max={10}
+                      placeholder="RPE"
+                      className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-[11.5px] outline-none focus:border-[var(--color-accent)]"
+                    />
                   </div>
+                  {rpeDelta !== null && (
+                    <div className="mt-1.5 text-[10px]" style={{ color: rpeDelta === 0 ? 'var(--color-green)' : rpeDelta > 0 ? 'var(--color-accent)' : 'var(--color-text-3)' }}>
+                      {rpeDelta === 0 ? 'On target for this week' : rpeDelta > 0 ? `${rpeDelta} harder than this week's target` : `${Math.abs(rpeDelta)} easier than this week's target`}
+                    </div>
+                  )}
                 </div>
               )
             })}
