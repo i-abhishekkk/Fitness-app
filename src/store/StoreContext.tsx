@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { User } from 'firebase/auth'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { doc, onSnapshot, setDoc } from 'firebase/firestore'
 import { auth, db, firebaseEnabled, watchAuth, watchForegroundPush } from '../lib/firebase'
 import { DEFAULTS, loadLocal, saveLocal, type AppState } from './appState'
 
@@ -19,7 +19,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [authReady, setAuthReady] = useState(!firebaseEnabled)
   const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const hydratedFromCloud = useRef(false)
 
   // Auth
   useEffect(() => {
@@ -33,19 +32,35 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // Show a notification for push messages that arrive while the app is in the foreground
   useEffect(() => watchForegroundPush(), [])
 
-  // Pull cloud state once per sign-in
+  // Live cloud sync — a persistent listener (not a one-time fetch) so a change written from
+  // elsewhere (another device, or the Worker's Sunday weekly-review job) reaches this open
+  // session immediately instead of only on the next fresh app launch.
+  //
+  // onSnapshot also fires for our OWN writes echoing back once Firestore acknowledges them —
+  // naively applying every event to local state would re-trigger the debounced write effect
+  // below, which writes again, which echoes again, forever. The fix is a content-equality
+  // check: `merged` and `prev` are both always built via the same `{...DEFAULTS, ...x}` spread
+  // (see loadLocal below too), so they always land on the same canonical key order and a plain
+  // JSON.stringify comparison is safe — when an echo's content matches what's already local,
+  // the functional setStateRaw returns `prev` unchanged, so React keeps the same object
+  // reference and nothing downstream re-fires. A genuine external change (different content)
+  // still applies normally.
   useEffect(() => {
-    if (!user || !db || hydratedFromCloud.current) return
-    hydratedFromCloud.current = true
-    ;(async () => {
-      const ref = doc(db!, 'users', user.uid, 'state', 'app')
-      const snap = await getDoc(ref)
-      if (snap.exists()) {
-        setStateRaw({ ...structuredClone(DEFAULTS), ...(snap.data() as Partial<AppState>) })
-      } else {
-        await setDoc(ref, state)
+    if (!user || !db) return
+    const ref = doc(db!, 'users', user.uid, 'state', 'app')
+    const unsub = onSnapshot(ref, (snap) => {
+      if (!snap.exists()) {
+        setDoc(ref, state).catch(() => {})
+        return
       }
-    })()
+      const merged = { ...structuredClone(DEFAULTS), ...(snap.data() as Partial<AppState>) }
+      setStateRaw((prev) => {
+        if (JSON.stringify(merged) === JSON.stringify(prev)) return prev
+        saveLocal(merged) // keep the offline cache current too, e.g. a server-pushed weekly review
+        return merged
+      })
+    })
+    return unsub
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
