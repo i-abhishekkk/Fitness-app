@@ -1,12 +1,14 @@
 import type { AppState } from '../store/appState'
 import { AURA_TARGETS, DIET_TARGETS, HABITS, SKILL_UNLOCKS, WATER_TARGET_L, STEPS_TARGET, WEIGHT_BASELINE, WEIGHT_TARGET, OFFICE, calcAge, getTodayCfg } from '../data/plan'
 import { LAWS } from '../data/workouts'
+import { getCurrentMesoWeek } from '../data/periodization'
 
 /** Turns the live app state + the program's static rules into one grounded text block
  *  for the coach system prompt. Only ever reports what's actually in `state` — no
  *  invented trends or numbers — so the model has nothing to hallucinate on top of. */
 export function buildCoachContext(state: AppState): string {
   const cfg = getTodayCfg()
+  const meso = getCurrentMesoWeek()
   const targets = DIET_TARGETS[cfg.type]
   const weight = state.weights.at(-1)?.kg ?? WEIGHT_BASELINE
   const prevWeight = state.weights.length >= 2 ? state.weights[state.weights.length - 2].kg : null
@@ -61,6 +63,8 @@ ${laws}
 
 TODAY: ${cfg.label} (${new Date().toLocaleDateString()}). Diet targets today: ${targets.kcal} kcal, ${targets.p}g protein, ${targets.c}g carbs, ${targets.f}g fat.
 LIFE SCHEDULE: Abhishek works an office job ${OFFICE.start}–${OFFICE.end} on weekdays, ${OFFICE.commuteMinutes} min commute each way. Gym is 8:30 AM before office. He eats 4 meals/day (not 6-7) — this is a deliberate constraint from his real schedule, not something to suggest changing back.
+
+MESOCYCLE: Week ${meso.week} of 4 — ${meso.name}. ${meso.focus} Reps: ${meso.repGuidance}. Rest: ${meso.restGuidance}. Target: ${meso.rpeTarget}. Load: ${meso.loadNote} The gym exercises themselves don't change week to week — only reps/load/rest/RPE cycle through this 4-week pattern (2 build weeks → 1 peak week → 1 deload). If Abhishek asks about today's weights/reps, answer relative to this current week, not a flat number.
 
 WEIGHT: current ${weight}kg (baseline ${WEIGHT_BASELINE}kg, target ${WEIGHT_TARGET}kg)${prevWeight ? `, previous entry ${prevWeight}kg` : ''}.
 Recent weigh-ins: ${recentWeights || 'none logged'}.

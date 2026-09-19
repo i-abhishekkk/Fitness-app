@@ -1,9 +1,10 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { GlassCard, SectionTitle, Segmented, Callout, Divider, mix } from '../components/ui'
-import { ChevronDownIcon, ClockIcon, ShieldIcon, HeartIcon, SparklesIcon, DumbbellIcon } from '../components/icons'
+import { ChevronDownIcon, ClockIcon, ShieldIcon, HeartIcon, SparklesIcon, DumbbellIcon, TrendingUpIcon } from '../components/icons'
 import { SPLIT, HS_LADDER, MU_LADDER, HR_ZONES, LAWS } from '../data/workouts'
 import { TIMELINES, getTodayDow, getTodayCfg, calcAge, getHRMax } from '../data/plan'
+import { MESOCYCLE, getCurrentMesoWeek } from '../data/periodization'
 
 type Top = 'timeline' | 'workout'
 type Sub = 'split' | 'skills' | 'cardio' | 'laws'
@@ -26,6 +27,7 @@ export default function Train() {
         <TimelineView />
       ) : (
         <div>
+          <MesocycleBanner />
           <Segmented
             value={sub}
             onChange={setSub}
@@ -43,6 +45,53 @@ export default function Train() {
         </div>
       )}
     </div>
+  )
+}
+
+function MesocycleBanner() {
+  const current = getCurrentMesoWeek()
+  return (
+    <GlassCard glow={current.color} className="mb-4">
+      <div className="mb-3 flex items-center gap-2.5">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg" style={{ background: mix(current.color, 16), color: current.color }}>
+          <TrendingUpIcon width={15} height={15} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="font-[var(--font-mono)] text-[9.5px] font-bold uppercase tracking-[1.5px]" style={{ color: current.color }}>
+            Mesocycle · Week {current.week} of 4
+          </div>
+          <div className="font-[var(--font-display)] text-[15px] font-semibold tracking-tight">{current.name}</div>
+        </div>
+        <div className="flex shrink-0 gap-1">
+          {MESOCYCLE.map((w) => (
+            <span
+              key={w.week}
+              className="h-1.5 w-5 rounded-full"
+              style={{ background: w.week === current.week ? current.color : 'rgba(255,255,255,0.1)' }}
+            />
+          ))}
+        </div>
+      </div>
+      <div className="mb-3 text-[12px] leading-relaxed text-[var(--color-text-2)]">{current.focus}</div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-lg bg-white/[0.03] p-2">
+          <div className="text-[9px] font-semibold uppercase tracking-wide text-[var(--color-text-3)]">Reps</div>
+          <div className="mt-0.5 text-[11px] font-medium">{current.repGuidance}</div>
+        </div>
+        <div className="rounded-lg bg-white/[0.03] p-2">
+          <div className="text-[9px] font-semibold uppercase tracking-wide text-[var(--color-text-3)]">Rest</div>
+          <div className="mt-0.5 text-[11px] font-medium">{current.restGuidance}</div>
+        </div>
+        <div className="rounded-lg bg-white/[0.03] p-2">
+          <div className="text-[9px] font-semibold uppercase tracking-wide text-[var(--color-text-3)]">Target</div>
+          <div className="mt-0.5 text-[11px] font-medium">{current.rpeTarget}</div>
+        </div>
+        <div className="rounded-lg bg-white/[0.03] p-2">
+          <div className="text-[9px] font-semibold uppercase tracking-wide text-[var(--color-text-3)]">Load</div>
+          <div className="mt-0.5 text-[11px] font-medium leading-snug">{current.loadNote}</div>
+        </div>
+      </div>
+    </GlassCard>
   )
 }
 

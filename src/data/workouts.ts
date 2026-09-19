@@ -189,6 +189,8 @@ export const SPLIT: SplitDay[] = [
         { name: 'Glute-Ham Raise / Superman Hold — hamstrings + lower back, zero spinal load', sets: '3×10 / 3×30s' },
         { name: 'Step-ups with DB — full hip extension', sets: '3×12 each' },
         { name: 'Pistol squat progression', sets: '3×6 each' },
+        { name: 'Single-leg calf raise on curb/step — full stretch to full extension', sets: '4×15 each' },
+        { name: 'Explosive pogo hops — ankle stiffness, minimal knee bend', sets: '3×20' },
       ]},
       { heading: 'Core + HIIT', exercises: [
         { name: 'Plank series — front + both sides', sets: '3×40s each' },
@@ -252,8 +254,8 @@ export const HR_ZONES = [
 export const LAWS = [
   { n: 1, text: 'Skill before iron. HS work ALWAYS before main session. Fatigued shoulders = no progress.' },
   { n: 2, text: 'Rep tempo: 2 sec up · 1 sec hold · 3 sec down. Never bounce reps.' },
-  { n: 3, text: 'Rest strictly: 90–120s compounds · 60s isolation · 45s abs/wrists.' },
-  { n: 4, text: 'Progressive overload: +2.5kg compound every 1–2 weeks. Track every session.' },
+  { n: 3, text: 'Rest by mesocycle week, not habit — 90s in Accumulation, 2–3 min in Intensification, no rush in Deload. Check the current week on Train → Workout.' },
+  { n: 4, text: 'Progressive overload runs on the 4-week mesocycle: build volume for 2 weeks, peak load in week 3, deload in week 4. The deload is not optional — it\'s what makes week 3 of the next cycle a PR.' },
   { n: 5, text: 'Hollow body is everything. It IS the handstand position. Master it first.' },
   { n: 6, text: 'Post-workout window: Meal 2 within 45 min of finishing. Non-negotiable.' },
   { n: 7, text: '7 hours minimum sleep. Where adaptation happens. Protect it.' },
