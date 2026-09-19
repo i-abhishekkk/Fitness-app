@@ -29,33 +29,44 @@ async function findDatabaseId(token: string, projectId: string): Promise<string>
   return first.name.split('/').pop()!
 }
 
-async function listUserIds(token: string, projectId: string, dbId: string): Promise<string[]> {
-  const res = await fetch(
-    `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/users`,
-    { headers: { Authorization: `Bearer ${token}` } },
-  )
-  const data = (await res.json()) as { documents?: FirestoreDocument[] }
-  return (data.documents ?? []).map((d) => d.name!.split('/').pop()!)
+interface PushTarget {
+  uid: string
+  enabled: boolean
+  fcmToken: string | null
 }
 
-async function getPushInfo(
-  token: string,
-  projectId: string,
-  dbId: string,
-  uid: string,
-): Promise<{ enabled: boolean; fcmToken: string | null } | null> {
+/** users/{uid} is never written directly by the app — only the nested users/{uid}/state/app
+ *  is — so it doesn't "exist" as a document and a plain `documents/users` list call (or the
+ *  Admin SDK's `.collection('users').listDocuments()`) returns nothing, even though every
+ *  nested doc is directly fetchable by exact path (confirmed empirically: a direct GET on
+ *  one user's state/app path succeeded while listing the parent collection returned `{}`).
+ *  A collection-group query over `state` sidesteps the whole problem — it matches every
+ *  `.../state/{docId}` document regardless of parent, in one request instead of N+1. */
+async function listPushTargets(token: string, projectId: string, dbId: string): Promise<PushTarget[]> {
   const res = await fetch(
-    `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/users/${uid}/state/app`,
-    { headers: { Authorization: `Bearer ${token}` } },
+    `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents:runQuery`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        structuredQuery: { from: [{ collectionId: 'state', allDescendants: true }] },
+      }),
+    },
   )
-  if (!res.ok) return null
-  const doc = (await res.json()) as FirestoreDocument
-  const push = doc.fields?.push?.mapValue?.fields
-  if (!push) return null
-  return {
-    enabled: push.enabled?.booleanValue === true,
-    fcmToken: push.token?.stringValue ?? null,
+  const rows = (await res.json()) as { document?: FirestoreDocument }[]
+  const targets: PushTarget[] = []
+  for (const row of rows) {
+    const doc = row.document
+    const match = doc?.name?.match(/\/users\/([^/]+)\/state\/app$/)
+    if (!match) continue
+    const push = doc!.fields?.push?.mapValue?.fields
+    targets.push({
+      uid: match[1],
+      enabled: push?.enabled?.booleanValue === true,
+      fcmToken: push?.token?.stringValue ?? null,
+    })
   }
+  return targets
 }
 
 async function clearDeadToken(token: string, projectId: string, dbId: string, uid: string): Promise<void> {
@@ -108,16 +119,15 @@ export async function sendScheduledReminder(now: Date, serviceAccount: ServiceAc
   ])
   const projectId = serviceAccount.project_id
   const dbId = await findDatabaseId(firestoreToken, projectId)
-  const userIds = await listUserIds(firestoreToken, projectId, dbId)
+  const targets = await listPushTargets(firestoreToken, projectId, dbId)
 
   let sent = 0
-  for (const uid of userIds) {
-    const push = await getPushInfo(firestoreToken, projectId, dbId, uid)
-    if (!push?.enabled || !push.fcmToken) continue
+  for (const target of targets) {
+    if (!target.enabled || !target.fcmToken) continue
 
-    const result = await sendFcm(fcmToken, projectId, push.fcmToken, message.title, message.body)
+    const result = await sendFcm(fcmToken, projectId, target.fcmToken, message.title, message.body)
     if (result.ok) sent++
-    else if (result.deadToken) await clearDeadToken(firestoreToken, projectId, dbId, uid)
+    else if (result.deadToken) await clearDeadToken(firestoreToken, projectId, dbId, target.uid)
   }
 
   return `Sent "${message.title}" to ${sent} device(s).`
