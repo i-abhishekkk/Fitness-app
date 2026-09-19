@@ -1,4 +1,5 @@
 import { useState, type ChangeEvent } from 'react'
+import type * as XLSXNS from 'xlsx'
 import { motion } from 'motion/react'
 import { GlassCard, SectionTitle, Segmented, Callout, TextField, TextAreaField, SelectField, Button, Toggle } from '../components/ui'
 import { CountUp } from '../components/CountUp'
@@ -395,9 +396,22 @@ function NotificationsCard() {
   )
 }
 
+type Range = '7' | '30' | '90' | 'all'
+const RANGE_LABELS: Record<Range, string> = { '7': '7 Days', '30': '30 Days', '90': '90 Days', all: 'All Time' }
+
+function appendSheet(XLSX: typeof XLSXNS, wb: XLSXNS.WorkBook, rows: Record<string, unknown>[], name: string) {
+  const ws = rows.length ? XLSX.utils.json_to_sheet(rows) : XLSX.utils.aoa_to_sheet([[`No ${name.toLowerCase()} logged in this range`]])
+  XLSX.utils.book_append_sheet(wb, ws, name)
+}
+
 function DataPanel() {
   const { state, setState } = useStore()
+  const [range, setRange] = useState<Range>('all')
+  const [exporting, setExporting] = useState(false)
 
+  // Full, unfiltered JSON snapshot — this is the restore format (imported back via the file
+  // picker below), so it deliberately ignores the date-range selector. That selector only
+  // applies to the human-readable Excel export beneath it.
   const exportData = () => {
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -406,6 +420,76 @@ function DataPanel() {
     a.download = `godmode-backup-${new Date().toISOString().slice(0, 10)}.json`
     a.click()
     URL.revokeObjectURL(url)
+  }
+
+  const exportExcel = async () => {
+    setExporting(true)
+    try {
+      const XLSX = await import('xlsx')
+      const cutoff = range === 'all' ? 0 : Date.now() - Number(range) * 86_400_000
+      const inRange = (d: string) => new Date(d).getTime() >= cutoff
+
+      const wb = XLSX.utils.book_new()
+
+      const sessionRows = state.sessions
+        .filter((s) => inRange(s.date))
+        .flatMap((s) =>
+          s.exercises.map((e) => ({
+            Date: new Date(s.date).toLocaleDateString(),
+            'Day Type': s.dayType,
+            Exercise: e.name,
+            Sets: e.raw?.sets ?? '',
+            Reps: e.raw?.reps ?? '',
+            'Weight (kg)': e.raw?.weightKg ?? '',
+            RPE: e.raw?.rpe ?? '',
+            Detail: e.sets,
+          })),
+        )
+      appendSheet(XLSX, wb, sessionRows, 'Sessions')
+
+      const weightRows = state.weights.filter((w) => inRange(w.date)).map((w) => ({ Date: new Date(w.date).toLocaleDateString(), 'Weight (kg)': w.kg }))
+      appendSheet(XLSX, wb, weightRows, 'Weights')
+
+      const sleepRows = state.sleep.filter((s) => inRange(s.date)).map((s) => ({ Date: new Date(s.date).toLocaleDateString(), 'Hours Slept': s.hours }))
+      appendSheet(XLSX, wb, sleepRows, 'Sleep')
+
+      const foodRows = state.food.filter((f) => inRange(f.date)).map((f) => ({
+        Date: new Date(f.date).toLocaleDateString(), Meal: f.name, 'Protein (g)': f.p, 'Carbs (g)': f.c, 'Fat (g)': f.f, Kcal: f.k,
+      }))
+      appendSheet(XLSX, wb, foodRows, 'Food Log')
+
+      const measurementRows = state.measurements.filter((m) => inRange(m.date)).map((m) => ({
+        Date: new Date(m.date).toLocaleDateString(),
+        'Chest (cm)': m.chest ?? '', 'Waist (cm)': m.waist ?? '', 'Hips (cm)': m.hips ?? '', 'Arms (cm)': m.arms ?? '', 'Thighs (cm)': m.thighs ?? '', 'Neck (cm)': m.neck ?? '',
+      }))
+      appendSheet(XLSX, wb, measurementRows, 'Measurements')
+
+      const currentWeight = state.weights.at(-1)?.kg ?? null
+      const bmi = state.heightCm && currentWeight ? currentWeight / (state.heightCm / 100) ** 2 : null
+      appendSheet(
+        XLSX,
+        wb,
+        [
+          { Field: 'Export range', Value: RANGE_LABELS[range] },
+          { Field: 'Exported on', Value: new Date().toLocaleString() },
+          { Field: 'Current weight (kg)', Value: currentWeight ?? '' },
+          { Field: 'Height (cm)', Value: state.heightCm ?? '' },
+          { Field: 'BMI', Value: bmi ? bmi.toFixed(1) : '' },
+          { Field: 'Streak (total days logged, all-time)', Value: state.streakDays.length },
+          { Field: 'Handstand hold best (s)', Value: state.aura.hsRaw },
+          { Field: 'Pull-ups best (reps)', Value: state.aura.puRaw },
+          { Field: 'Dips best (reps)', Value: state.aura.muRaw },
+          { Field: 'Stair sets best', Value: state.aura.cvRaw },
+          { Field: 'C2B pull-ups best (reps)', Value: state.aura.c2bRaw },
+          { Field: 'Scapular pull-ups best (reps)', Value: state.aura.scapRaw },
+        ],
+        'Summary',
+      )
+
+      XLSX.writeFile(wb, `godmode-export-${range}-${new Date().toISOString().slice(0, 10)}.xlsx`)
+    } finally {
+      setExporting(false)
+    }
   }
 
   const importData = (e: ChangeEvent<HTMLInputElement>) => {
@@ -426,19 +510,32 @@ function DataPanel() {
   return (
     <div className="space-y-3">
       <NotificationsCard />
-      <GlassCard glow="var(--color-blue)">
-        <SectionTitle icon={<DownloadIcon width={14} height={14} />} color="var(--color-blue)">Data Backup</SectionTitle>
+      <GlassCard glow="var(--color-teal)">
+        <SectionTitle icon={<DownloadIcon width={14} height={14} />} color="var(--color-teal)">Export to Excel</SectionTitle>
         <Callout kind="tip">
-          Your sessions, weights, streaks, sleep, and food logs sync to your account when signed in, and are always cached locally. Export regularly for a portable copy.
+          A readable spreadsheet — separate Sessions, Weights, Sleep, Food, Measurements, and Summary sheets. For opening in Excel/Sheets, not for restoring into the app.
+        </Callout>
+        <div className="mb-3">
+          <Segmented value={range} onChange={setRange} options={(Object.keys(RANGE_LABELS) as Range[]).map((r) => ({ value: r, label: RANGE_LABELS[r] }))} />
+        </div>
+        <Button full color="var(--color-teal)" onClick={exportExcel} disabled={exporting}>
+          <DownloadIcon width={14} height={14} /> {exporting ? 'Building…' : `Export .xlsx (${RANGE_LABELS[range]})`}
+        </Button>
+      </GlassCard>
+      <GlassCard glow="var(--color-blue)">
+        <SectionTitle icon={<DownloadIcon width={14} height={14} />} color="var(--color-blue)">Backup &amp; Restore</SectionTitle>
+        <Callout kind="tip">
+          A full JSON snapshot of everything (always the complete history, not just the range above) — this is what re-loads back into the app below, so it's the one to keep for disaster recovery, not for reading.
         </Callout>
         <div className="mb-2.5">
           <Button variant="secondary" full color="var(--color-blue)" onClick={exportData}>
             <DownloadIcon width={14} height={14} /> Export Backup JSON
           </Button>
         </div>
+        <div className="mb-1.5 text-[11px] font-semibold text-[var(--color-text-3)]">Restore from a backup file</div>
         <input type="file" accept=".json" onChange={importData} className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] text-[var(--color-text-2)] file:mr-2 file:rounded-md file:border-none file:bg-white/10 file:px-2 file:py-1 file:text-[10px] file:text-[var(--color-text)]" />
         <div className="mt-2 text-[10.5px] leading-relaxed text-[var(--color-text-3)]">
-          Import merges into current data. Export first if unsure.
+          Only accepts a JSON file exported from here (not the Excel file above). Useful after clearing data, on a new device, or if cloud sync ever fails. Import merges into current data — export first if unsure.
         </div>
       </GlassCard>
       <DangerZone />
