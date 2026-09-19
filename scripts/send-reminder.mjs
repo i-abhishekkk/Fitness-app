@@ -1,32 +1,18 @@
-// Sends a push reminder to every user with notifications enabled. Run via the
-// "Send Reminder" GitHub Actions workflow (.github/workflows/reminders.yml) on a
-// schedule — not part of the web app bundle, this only ever runs in CI/Node.
+// Sends a one-off push notification to every user with notifications enabled. Run via
+// the "Send Reminder (manual)" GitHub Actions workflow (workflow_dispatch only — the
+// actual reminder schedule now lives in Cloudflare Workers Cron Triggers, see
+// worker/src/reminders.ts) or locally for testing. Not part of the app bundle.
 //
-// On a scheduled run, the workflow passes CRON_SCHEDULE=${{ github.event.schedule }} and
-// this looks up the matching title/body from reminder-schedule.mjs. On a manual
-// workflow_dispatch test run, pass an explicit title/body instead:
-//   node scripts/send-reminder.mjs "<title>" "<body>"
+// Usage: node scripts/send-reminder.mjs "<title>" "<body>"
 // Requires FIREBASE_SERVICE_ACCOUNT_KEY env var (a Firebase service account JSON,
-// as a single-line string — see the workflow for how it's supplied from a secret).
+// as a single-line string).
 
 import { initializeApp, cert } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 import { getMessaging } from 'firebase-admin/messaging'
 import { GoogleAuth } from 'google-auth-library'
-import { messageForSchedule } from './reminder-schedule.mjs'
 
-const schedule = process.env.CRON_SCHEDULE
-const scheduled = schedule ? messageForSchedule(schedule) : null
-
-if (schedule && !scheduled) {
-  console.error(`No message mapped for cron schedule "${schedule}" — check reminder-schedule.mjs.`)
-  process.exit(1)
-}
-
-const [argTitle, argBody] = process.argv.slice(2)
-const title = scheduled?.title ?? argTitle ?? 'GOD MODE'
-const body = scheduled?.body ?? argBody ?? 'Time to check in.'
-const link = scheduled?.link ?? 'https://i-abhishekkk.github.io/Fitness-app/today'
+const [title = 'GOD MODE', body = 'Time to check in.'] = process.argv.slice(2)
 
 const keyJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
 if (!keyJson) {
@@ -74,7 +60,7 @@ for (const userRef of userRefs) {
       token: push.token,
       notification: { title, body },
       webpush: {
-        fcmOptions: { link },
+        fcmOptions: { link: 'https://i-abhishekkk.github.io/Fitness-app/today' },
       },
     })
     sent++

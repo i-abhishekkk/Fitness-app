@@ -10,5 +10,16 @@ FIREBASE_PROJECT_ID = "fitness-app-d3ca2"
 COACH_EMAIL = "ask.abhishek.ai@gmail.com"
 ALLOWED_ORIGINS = "https://i-abhishekkk.github.io,http://localhost:5173"
 
-# ANTHROPIC_API_KEY is set separately as a secret (never in this file):
+# ANTHROPIC_API_KEY and FIREBASE_SERVICE_ACCOUNT_KEY are set separately as secrets
+# (never in this file):
 #   npx wrangler secret put ANTHROPIC_API_KEY
+#   npx wrangler secret put FIREBASE_SERVICE_ACCOUNT_KEY
+
+# Workers Free caps Cron Triggers at 5 per account — nowhere near the 25 distinct
+# reminder times this app needs (learned the hard way: a 25-entry crons array here was
+# rejected with "reached the Workers Free limit of 5 cron triggers per account"). So
+# there's a single trigger that fires every minute, and src/reminder-schedule.ts does its
+# own IST-time matching against the full reminder table on every firing — see
+# src/index.ts's `scheduled` handler.
+[triggers]
+crons = ["* * * * *"]

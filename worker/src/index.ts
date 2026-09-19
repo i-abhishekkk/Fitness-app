@@ -1,11 +1,13 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { createRemoteJWKSet, jwtVerify } from 'jose'
+import { sendScheduledReminder } from './reminders'
 
 export interface Env {
   ANTHROPIC_API_KEY: string
   FIREBASE_PROJECT_ID: string
   COACH_EMAIL: string
   ALLOWED_ORIGINS: string
+  FIREBASE_SERVICE_ACCOUNT_KEY: string
 }
 
 interface ChatMessage {
@@ -104,5 +106,21 @@ export default {
       console.error('Anthropic request failed:', err)
       return json({ error: 'The AI request failed. Try again in a moment.' }, 502, cors)
     }
+  },
+
+  // Cron Trigger (wrangler.toml [triggers] crons — fires every minute) — a first-class
+  // scheduling primitive on this platform, unlike GitHub Actions' best-effort `schedule`
+  // event, which was observed running reminders 4-5 hours late. Workers Free caps cron
+  // triggers at 5/account (nowhere near the 25 distinct reminder times this needs), so
+  // there's one trigger and reminder-schedule.ts does its own time-matching every minute.
+  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    const serviceAccount = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT_KEY)
+    ctx.waitUntil(
+      sendScheduledReminder(new Date(event.scheduledTime), serviceAccount)
+        .then((result) => {
+          if (result) console.log(result)
+        })
+        .catch((err) => console.error('Scheduled reminder failed:', err)),
+    )
   },
 }
