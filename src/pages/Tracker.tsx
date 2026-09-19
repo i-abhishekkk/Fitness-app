@@ -2,7 +2,7 @@ import { useState, type ChangeEvent } from 'react'
 import { motion } from 'motion/react'
 import { GlassCard, SectionTitle, Segmented, Callout, TextField, TextAreaField, SelectField, Button, Toggle } from '../components/ui'
 import { CountUp } from '../components/CountUp'
-import { PlusIcon, XIcon, MoonIcon, TargetIcon, DownloadIcon, TrashIcon, CheckIcon, BellIcon } from '../components/icons'
+import { PlusIcon, XIcon, MoonIcon, TargetIcon, DownloadIcon, TrashIcon, CheckIcon, BellIcon, ChevronDownIcon } from '../components/icons'
 import { useStore } from '../store/StoreContext'
 import { enablePush, disablePush } from '../lib/firebase'
 import { haptic } from '../lib/haptics'
@@ -423,11 +423,6 @@ function DataPanel() {
     reader.readAsText(file)
   }
 
-  const clearAll = () => {
-    if (!confirm('This permanently deletes ALL logged data. Continue?')) return
-    setState((s) => ({ ...s, water: 0, steps: 0, checklist: {}, sessions: [], weights: [], sleep: [], macros: { p: 0, c: 0, f: 0, k: 0 }, streakDays: [], habits: {} }))
-  }
-
   return (
     <div className="space-y-3">
       <NotificationsCard />
@@ -446,11 +441,52 @@ function DataPanel() {
           Import merges into current data. Export first if unsure.
         </div>
       </GlassCard>
-      <GlassCard glow="var(--color-accent)">
-        <SectionTitle icon={<TrashIcon width={14} height={14} />} color="var(--color-accent)">Danger Zone</SectionTitle>
-        <Callout kind="danger">This permanently deletes today's logged data. Export a backup first.</Callout>
-        <Button full onClick={clearAll}>Clear Logged Data</Button>
-      </GlassCard>
+      <DangerZone />
     </div>
+  )
+}
+
+const CLEARED_FIELDS = 'water, steps, today\'s checklist, workout sessions, weight log, sleep log, macros, streak history, and habit toggles'
+
+function DangerZone() {
+  const { setState } = useStore()
+  const [open, setOpen] = useState(false)
+  const [confirming, setConfirming] = useState(false)
+
+  const clearAll = () => {
+    setState((s) => ({ ...s, water: 0, steps: 0, checklist: {}, sessions: [], weights: [], sleep: [], macros: { p: 0, c: 0, f: 0, k: 0 }, streakDays: [], habits: {} }))
+    setConfirming(false)
+    setOpen(false)
+  }
+
+  return (
+    <GlassCard glow="var(--color-accent)">
+      <button onClick={() => setOpen((o) => !o)} className="flex w-full items-center justify-between text-left">
+        <SectionTitle icon={<TrashIcon width={14} height={14} />} color="var(--color-accent)">Danger Zone</SectionTitle>
+        <motion.span animate={{ rotate: open ? 180 : 0 }} className="text-[var(--color-text-3)]">
+          <ChevronDownIcon width={16} height={16} />
+        </motion.span>
+      </button>
+      {open && (
+        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="overflow-hidden">
+          <div className="pt-1">
+            <Callout kind="danger">
+              Clears {CLEARED_FIELDS} — on this device AND in your synced cloud copy. Body measurements, food log, height, and skill numbers are not touched. There's no undo — export a backup first if unsure.
+            </Callout>
+            {!confirming ? (
+              <Button full onClick={() => setConfirming(true)}>Clear Logged Data</Button>
+            ) : (
+              <div className="space-y-2">
+                <div className="text-center text-[11.5px] font-bold text-[var(--color-accent)]">Are you sure? This can't be undone.</div>
+                <div className="flex gap-2">
+                  <Button variant="secondary" full onClick={() => setConfirming(false)}>Cancel</Button>
+                  <Button full onClick={clearAll}>Yes, Delete</Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
+    </GlassCard>
   )
 }
