@@ -6,7 +6,7 @@ import { PillIcon, PlusIcon, SaladIcon, XIcon } from '../components/icons'
 import { DIET_PLANS, QUICK_ADD, BADGE_COLORS, type Meal } from '../data/diet'
 import { DIET_TARGETS, SUPPS, getTodayCfg, type DayType } from '../data/plan'
 import { useStore } from '../store/StoreContext'
-import type { FoodEntry } from '../store/appState'
+import { pushActivity, type FoodEntry } from '../store/appState'
 
 type Top = 'today' | 'plan' | 'log' | 'supps'
 const DAY_TABS: { value: DayType; label: string }[] = [
@@ -256,7 +256,14 @@ function FoodLog() {
 
 function SuppsDetail() {
   const { state, setState } = useStore()
-  const toggle = (key: string) => setState((s) => ({ ...s, supps: { ...s.supps, [key]: !s.supps[key] } }))
+  const toggle = (key: string) => {
+    const wasOn = !!state.supps[key]
+    setState((s) => ({ ...s, supps: { ...s.supps, [key]: !s.supps[key] } }))
+    if (!wasOn) {
+      const supp = SUPPS.find((s) => s.key === key)
+      if (supp) pushActivity(setState, '💊', `Took ${supp.name}`)
+    }
+  }
   return (
     <GlassCard glow="var(--color-amber)">
       <SectionTitle icon={<PillIcon width={14} height={14} />} color="var(--color-amber)">Supplement Protocol</SectionTitle>

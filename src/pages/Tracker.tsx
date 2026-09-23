@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from 'react'
+import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import type * as XLSXNS from 'xlsx'
 import { motion } from 'motion/react'
 import { GlassCard, SectionTitle, Segmented, Callout, TextField, TextAreaField, SelectField, Button, Toggle } from '../components/ui'
@@ -10,7 +10,7 @@ import { haptic } from '../lib/haptics'
 import { HABITS, getTodayDow } from '../data/plan'
 import { SPLIT } from '../data/workouts'
 import { getCurrentMesoWeek } from '../data/periodization'
-import type { SessionEntry, SessionExercise } from '../store/appState'
+import { pushActivity, type SessionEntry, type SessionExercise, type SetLog } from '../store/appState'
 
 type Top = 'session' | 'history' | 'sleep' | 'habits' | 'data'
 
@@ -41,22 +41,71 @@ export default function Tracker() {
   )
 }
 
+interface DraftSet {
+  reps: string
+  weight: string
+  rpe: string
+}
+interface LogDraft {
+  day: string
+  hs: string
+  pu: string
+  mu: string
+  cv: string
+  c2b: string
+  scap: string
+  notes: string
+  logged: Record<string, DraftSet[]>
+  extra: { name: string; sets: string }[]
+}
+
+const DRAFT_KEY = 'gm5-log-draft'
+const emptyDraft = (day: string): LogDraft => ({ day, hs: '', pu: '', mu: '', cv: '', c2b: '', scap: '', notes: '', logged: {}, extra: [] })
+function loadDraft(fallbackDay: string): LogDraft {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY)
+    if (!raw) return emptyDraft(fallbackDay)
+    return { ...emptyDraft(fallbackDay), ...JSON.parse(raw) }
+  } catch {
+    return emptyDraft(fallbackDay)
+  }
+}
+function saveDraft(d: LogDraft) {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(d))
+  } catch {
+    // storage full/unavailable — draft just won't survive a reload, not fatal
+  }
+}
+function clearDraft() {
+  try {
+    localStorage.removeItem(DRAFT_KEY)
+  } catch {
+    // nothing to clean up if storage isn't available
+  }
+}
+
 function LogSession() {
   const { setState } = useStore()
   const todayOption = (() => {
     const d = SPLIT.find((x) => x.dow === getTodayDow())
     return d ? `${d.dow} — ${d.title}` : EXTRA_OPTION
   })()
-  const [day, setDay] = useState(todayOption)
-  const [hs, setHs] = useState('')
-  const [pu, setPu] = useState('')
-  const [mu, setMu] = useState('')
-  const [cv, setCv] = useState('')
-  const [c2b, setC2b] = useState('')
-  const [scap, setScap] = useState('')
-  const [notes, setNotes] = useState('')
-  const [logged, setLogged] = useState<Record<string, { sets: string; reps: string; weight: string; rpe: string }>>({})
-  const [extra, setExtra] = useState<{ name: string; sets: string }[]>([])
+  // Persisted to localStorage on every change (below) so an in-progress log survives switching
+  // tabs, backgrounding the app, or the browser discarding the page — previously this all lived
+  // in plain component state and vanished the moment LogSession unmounted.
+  const [draft, setDraft] = useState<LogDraft>(() => loadDraft(todayOption))
+  useEffect(() => saveDraft(draft), [draft])
+
+  const { day, hs, pu, mu, cv, c2b, scap, notes, logged, extra } = draft
+  const setDay = (v: string) => setDraft((d) => ({ ...d, day: v }))
+  const setHs = (v: string) => setDraft((d) => ({ ...d, hs: v }))
+  const setPu = (v: string) => setDraft((d) => ({ ...d, pu: v }))
+  const setMu = (v: string) => setDraft((d) => ({ ...d, mu: v }))
+  const setCv = (v: string) => setDraft((d) => ({ ...d, cv: v }))
+  const setC2b = (v: string) => setDraft((d) => ({ ...d, c2b: v }))
+  const setScap = (v: string) => setDraft((d) => ({ ...d, scap: v }))
+  const setNotes = (v: string) => setDraft((d) => ({ ...d, notes: v }))
 
   const splitDay = SPLIT.find((d) => `${d.dow} — ${d.title}` === day)
   const listedExercises = splitDay ? splitDay.blocks.flatMap((b) => b.exercises.map((e) => e.name)) : []
@@ -64,35 +113,47 @@ function LogSession() {
   const targetRpeMatch = meso.rpeTarget.match(/RPE\s*(\d+)/)
   const targetRpe = targetRpeMatch ? Number(targetRpeMatch[1]) : null
 
-  const setField = (name: string, field: 'sets' | 'reps' | 'weight' | 'rpe', v: string) =>
-    setLogged((l) => ({ ...l, [name]: { ...(l[name] ?? { sets: '', reps: '', weight: '', rpe: '' }), [field]: v } }))
+  const setsFor = (name: string) => logged[name] ?? []
+  const addSet = (name: string) =>
+    setDraft((d) => ({ ...d, logged: { ...d.logged, [name]: [...(d.logged[name] ?? []), { reps: '', weight: '', rpe: '' }] } }))
+  const updateSet = (name: string, idx: number, field: keyof DraftSet, v: string) =>
+    setDraft((d) => ({
+      ...d,
+      logged: { ...d.logged, [name]: (d.logged[name] ?? []).map((s, i) => (i === idx ? { ...s, [field]: v } : s)) },
+    }))
+  const removeSet = (name: string, idx: number) =>
+    setDraft((d) => ({ ...d, logged: { ...d.logged, [name]: (d.logged[name] ?? []).filter((_, i) => i !== idx) } }))
 
-  const addExtraRow = () => setExtra((e) => [...e, { name: '', sets: '' }])
+  const addExtraRow = () => setDraft((d) => ({ ...d, extra: [...d.extra, { name: '', sets: '' }] }))
   const updateExtra = (i: number, field: 'name' | 'sets', v: string) =>
-    setExtra((e) => e.map((row, idx) => (idx === i ? { ...row, [field]: v } : row)))
-  const removeExtra = (i: number) => setExtra((e) => e.filter((_, idx) => idx !== i))
+    setDraft((d) => ({ ...d, extra: d.extra.map((row, idx) => (idx === i ? { ...row, [field]: v } : row)) }))
+  const removeExtra = (i: number) => setDraft((d) => ({ ...d, extra: d.extra.filter((_, idx) => idx !== i) }))
+
+  const discardDraft = () => {
+    clearDraft()
+    setDraft(emptyDraft(todayOption))
+  }
 
   const save = () => {
     const num = (s: string) => (s ? parseInt(s, 10) : 0)
     const fromSplit = listedExercises
       .map((name) => {
-        const l = logged[name]
-        if (!l || (!l.sets && !l.reps && !l.weight)) return null
-        const parts = [l.sets && `${l.sets} sets`, l.reps && `${l.reps} reps`, l.weight && `${l.weight}kg`, l.rpe && `RPE ${l.rpe}`].filter(Boolean).join(' × ')
-        const entry: SessionExercise = { name, sets: parts || '—' }
-        if (l.sets && l.reps && l.weight) {
-          entry.raw = { sets: Number(l.sets), reps: Number(l.reps), weightKg: Number(l.weight), rpe: l.rpe ? Number(l.rpe) : undefined }
-        }
+        const sets = (logged[name] ?? []).filter((s) => s.reps && s.weight)
+        if (!sets.length) return null
+        const raw: SetLog[] = sets.map((s) => ({ reps: Number(s.reps), weightKg: Number(s.weight), rpe: s.rpe ? Number(s.rpe) : undefined }))
+        const detail = raw.map((s) => `${s.weightKg}kg×${s.reps}${s.rpe ? ` @RPE${s.rpe}` : ''}`).join(', ')
+        const entry: SessionExercise = { name, sets: `${raw.length} set${raw.length > 1 ? 's' : ''}: ${detail}`, raw }
         return entry
       })
       .filter(Boolean) as SessionEntry['exercises']
+    const fromExtra = extra.filter((e) => e.name.trim())
 
     setState((s) => {
       const session: SessionEntry = {
         id: crypto.randomUUID(),
         date: new Date().toISOString(),
         dayType: day,
-        exercises: [...fromSplit, ...extra, notes ? { name: 'Notes', sets: notes } : null].filter(Boolean) as SessionEntry['exercises'],
+        exercises: [...fromSplit, ...fromExtra, notes ? { name: 'Notes', sets: notes } : null].filter(Boolean) as SessionEntry['exercises'],
       }
       const aura = { ...s.aura }
       if (hs) aura.hsRaw = Math.max(aura.hsRaw, num(hs))
@@ -103,12 +164,19 @@ function LogSession() {
       if (scap) aura.scapRaw = Math.max(aura.scapRaw, num(scap))
       return { ...s, sessions: [session, ...s.sessions], aura }
     })
-    setHs(''); setPu(''); setMu(''); setCv(''); setC2b(''); setScap(''); setNotes(''); setLogged({}); setExtra([])
+    clearDraft()
+    setDraft(emptyDraft(todayOption))
   }
 
   return (
     <GlassCard glow="var(--color-accent)">
-      <SectionTitle>Log Workout Session</SectionTitle>
+      <SectionTitle trailing={
+        <button onClick={discardDraft} className="text-[10px] font-semibold text-[var(--color-text-3)] transition-colors hover:text-[var(--color-accent)]">
+          Discard draft
+        </button>
+      }>
+        Log Workout Session
+      </SectionTitle>
       <div className="mb-4">
         <SelectField label="Session" value={day} onChange={setDay} options={[...DAY_OPTIONS, EXTRA_OPTION]} />
       </div>
@@ -139,49 +207,70 @@ function LogSession() {
           </div>
           <div className="mb-4 space-y-2.5">
             {listedExercises.map((name) => {
-              const l = logged[name] ?? { sets: '', reps: '', weight: '', rpe: '' }
-              const rpeNum = l.rpe ? Number(l.rpe) : null
-              const rpeDelta = rpeNum && targetRpe ? rpeNum - targetRpe : null
+              const sets = setsFor(name)
               return (
                 <div key={name} className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
-                  <div className="mb-2 text-[12px] font-semibold leading-snug">{name}</div>
-                  <div className="grid grid-cols-4 gap-1.5">
-                    <input
-                      value={l.sets}
-                      onChange={(e) => setField(name, 'sets', e.target.value)}
-                      type="number"
-                      placeholder="Sets"
-                      className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-[11.5px] outline-none focus:border-[var(--color-accent)]"
-                    />
-                    <input
-                      value={l.reps}
-                      onChange={(e) => setField(name, 'reps', e.target.value)}
-                      type="number"
-                      placeholder="Reps"
-                      className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-[11.5px] outline-none focus:border-[var(--color-accent)]"
-                    />
-                    <input
-                      value={l.weight}
-                      onChange={(e) => setField(name, 'weight', e.target.value)}
-                      type="number"
-                      placeholder="kg"
-                      className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-[11.5px] outline-none focus:border-[var(--color-accent)]"
-                    />
-                    <input
-                      value={l.rpe}
-                      onChange={(e) => setField(name, 'rpe', e.target.value)}
-                      type="number"
-                      min={1}
-                      max={10}
-                      placeholder="RPE"
-                      className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-[11.5px] outline-none focus:border-[var(--color-accent)]"
-                    />
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <div className="text-[12px] font-semibold leading-snug">{name}</div>
+                    {sets.length > 0 && (
+                      <span className="shrink-0 font-[var(--font-mono)] text-[9.5px] text-[var(--color-text-3)]">
+                        {sets.length} set{sets.length > 1 ? 's' : ''}
+                      </span>
+                    )}
                   </div>
-                  {rpeDelta !== null && (
-                    <div className="mt-1.5 text-[10px]" style={{ color: rpeDelta === 0 ? 'var(--color-green)' : rpeDelta > 0 ? 'var(--color-accent)' : 'var(--color-text-3)' }}>
-                      {rpeDelta === 0 ? 'On target for this week' : rpeDelta > 0 ? `${rpeDelta} harder than this week's target` : `${Math.abs(rpeDelta)} easier than this week's target`}
+                  {sets.length > 0 && (
+                    <div className="mb-2 space-y-1.5">
+                      {sets.map((s, i) => {
+                        const rpeNum = s.rpe ? Number(s.rpe) : null
+                        const rpeDelta = rpeNum && targetRpe ? rpeNum - targetRpe : null
+                        return (
+                          <div key={i} className="flex items-center gap-1.5">
+                            <span className="w-4 shrink-0 text-center font-[var(--font-mono)] text-[10px] text-[var(--color-text-3)]">{i + 1}</span>
+                            <input
+                              value={s.reps}
+                              onChange={(e) => updateSet(name, i, 'reps', e.target.value)}
+                              type="number"
+                              placeholder="Reps"
+                              className="w-full min-w-0 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-[11.5px] outline-none focus:border-[var(--color-accent)]"
+                            />
+                            <input
+                              value={s.weight}
+                              onChange={(e) => updateSet(name, i, 'weight', e.target.value)}
+                              type="number"
+                              placeholder="kg"
+                              className="w-full min-w-0 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-[11.5px] outline-none focus:border-[var(--color-accent)]"
+                            />
+                            <input
+                              value={s.rpe}
+                              onChange={(e) => updateSet(name, i, 'rpe', e.target.value)}
+                              type="number"
+                              min={1}
+                              max={10}
+                              placeholder="RPE"
+                              className="w-full min-w-0 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-[11.5px] outline-none focus:border-[var(--color-accent)]"
+                            />
+                            {rpeDelta !== null && (
+                              <span
+                                className="w-7 shrink-0 text-center text-[9.5px] font-bold"
+                                style={{ color: rpeDelta === 0 ? 'var(--color-green)' : rpeDelta > 0 ? 'var(--color-accent)' : 'var(--color-text-3)' }}
+                              >
+                                {rpeDelta === 0 ? '✓' : rpeDelta > 0 ? `+${rpeDelta}` : rpeDelta}
+                              </span>
+                            )}
+                            <button onClick={() => removeSet(name, i)} className="shrink-0 text-[var(--color-text-3)] transition-colors hover:text-[var(--color-accent)]">
+                              <XIcon width={12} height={12} />
+                            </button>
+                          </div>
+                        )
+                      })}
                     </div>
                   )}
+                  <button
+                    onClick={() => addSet(name)}
+                    className="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-white/15 py-1.5 text-[10.5px] font-semibold text-[var(--color-text-3)] transition-colors hover:bg-white/5 hover:text-[var(--color-text-2)]"
+                  >
+                    <PlusIcon width={11} height={11} /> Add Set
+                  </button>
                 </div>
               )
             })}
@@ -231,7 +320,26 @@ function LogSession() {
   )
 }
 
+type HistoryTab = 'workouts' | 'activity'
+
 function History() {
+  const [tab, setTab] = useState<HistoryTab>('workouts')
+  return (
+    <div className="space-y-3">
+      <Segmented
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: 'workouts', label: 'Workouts' },
+          { value: 'activity', label: 'Activity' },
+        ]}
+      />
+      {tab === 'workouts' ? <WorkoutHistory /> : <ActivityHistory />}
+    </div>
+  )
+}
+
+function WorkoutHistory() {
   const { state, setState } = useStore()
   const del = (id: string) => setState((s) => ({ ...s, sessions: s.sessions.filter((x) => x.id !== id) }))
   return (
@@ -262,11 +370,70 @@ function History() {
             </div>
           </div>
           {s.exercises.map((ex, ei) => (
-            <div key={ei} className="mt-1.5 flex justify-between text-[11.5px] text-[var(--color-text-2)]">
+            <div key={ei} className="mt-1.5 flex justify-between gap-3 text-[11.5px] text-[var(--color-text-2)]">
               <span>{ex.name}</span>
-              <span className="font-[var(--font-mono)] text-[var(--color-text-3)]">{ex.sets}</span>
+              <span className="text-right font-[var(--font-mono)] text-[var(--color-text-3)]">{ex.sets}</span>
             </div>
           ))}
+        </motion.div>
+      ))}
+    </GlassCard>
+  )
+}
+
+interface ActivityRow {
+  id: string
+  date: string
+  icon: string
+  label: string
+  source: 'food' | 'activity'
+}
+
+function ActivityHistory() {
+  const { state, setState } = useStore()
+  const combined = useMemo<ActivityRow[]>(() => {
+    const foodRows: ActivityRow[] = state.food.map((f) => ({
+      id: f.id,
+      date: f.date,
+      icon: '🍽️',
+      label: `${f.name} — ${f.k} kcal (${f.p}P / ${f.c}C / ${f.f}F)`,
+      source: 'food',
+    }))
+    const activityRows: ActivityRow[] = state.activityLog.map((a) => ({ id: a.id, date: a.date, icon: a.icon, label: a.label, source: 'activity' }))
+    return [...foodRows, ...activityRows].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  }, [state.food, state.activityLog])
+
+  const del = (row: ActivityRow) =>
+    setState((s) =>
+      row.source === 'food' ? { ...s, food: s.food.filter((f) => f.id !== row.id) } : { ...s, activityLog: s.activityLog.filter((a) => a.id !== row.id) },
+    )
+
+  return (
+    <GlassCard>
+      <SectionTitle trailing={<span className="font-[var(--font-mono)] text-[10px] text-[var(--color-text-3)]">{combined.length} total</span>}>
+        Activity
+      </SectionTitle>
+      {combined.length === 0 && (
+        <div className="py-8 text-center text-[12.5px] leading-relaxed text-[var(--color-text-3)]">
+          Nothing logged yet — water, supplements, meals, steps, and habit check-offs show up here as you log them.
+        </div>
+      )}
+      {combined.map((row, i) => (
+        <motion.div
+          key={`${row.source}-${row.id}`}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: Math.min(i, 12) * 0.02 }}
+          className="flex items-center gap-3 border-b border-white/[0.06] py-2.5 last:border-none"
+        >
+          <span className="shrink-0 text-base">{row.icon}</span>
+          <span className="min-w-0 flex-1">
+            <div className="truncate text-[12px] font-semibold">{row.label}</div>
+            <div className="text-[10px] text-[var(--color-text-3)]">{new Date(row.date).toLocaleString()}</div>
+          </span>
+          <button onClick={() => del(row)} className="shrink-0 text-[var(--color-text-3)] transition-colors hover:text-[var(--color-accent)]">
+            <XIcon width={13} height={13} />
+          </button>
         </motion.div>
       ))}
     </GlassCard>
@@ -314,7 +481,12 @@ function Habits() {
   const { state, setState } = useStore()
   const toggle = (key: string) => {
     haptic()
+    const wasDone = !!state.habits[key]
     setState((s) => ({ ...s, habits: { ...s.habits, [key]: !s.habits[key] } }))
+    if (!wasDone) {
+      const h = HABITS.find((x) => x.key === key)
+      if (h) pushActivity(setState, h.icon, h.name)
+    }
   }
   return (
     <GlassCard glow="var(--color-green)">
@@ -431,19 +603,15 @@ function DataPanel() {
 
       const wb = XLSX.utils.book_new()
 
-      const sessionRows = state.sessions
+      const sessionRows: Record<string, string | number>[] = state.sessions
         .filter((s) => inRange(s.date))
         .flatMap((s) =>
-          s.exercises.map((e) => ({
-            Date: new Date(s.date).toLocaleDateString(),
-            'Day Type': s.dayType,
-            Exercise: e.name,
-            Sets: e.raw?.sets ?? '',
-            Reps: e.raw?.reps ?? '',
-            'Weight (kg)': e.raw?.weightKg ?? '',
-            RPE: e.raw?.rpe ?? '',
-            Detail: e.sets,
-          })),
+          s.exercises.flatMap((e): Record<string, string | number>[] => {
+            const base = { Date: new Date(s.date).toLocaleDateString(), 'Day Type': s.dayType, Exercise: e.name, Detail: e.sets }
+            return e.raw?.length
+              ? e.raw.map((set, i) => ({ ...base, Set: i + 1, Reps: set.reps, 'Weight (kg)': set.weightKg, RPE: set.rpe ?? '' }))
+              : [{ ...base, Set: '', Reps: '', 'Weight (kg)': '', RPE: '' }]
+          }),
         )
       appendSheet(XLSX, wb, sessionRows, 'Sessions')
 

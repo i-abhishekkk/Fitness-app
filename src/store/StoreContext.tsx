@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import type { User } from 'firebase/auth'
 import { doc, onSnapshot, setDoc } from 'firebase/firestore'
 import { auth, db, firebaseEnabled, watchAuth, watchForegroundPush } from '../lib/firebase'
-import { DEFAULTS, loadLocal, saveLocal, type AppState } from './appState'
+import { DEFAULTS, loadLocal, saveLocal, mergeAppState, type AppState } from './appState'
 
 interface StoreCtx {
   state: AppState
@@ -36,25 +36,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // elsewhere (another device, or the Worker's Sunday weekly-review job) reaches this open
   // session immediately instead of only on the next fresh app launch.
   //
-  // onSnapshot also fires for our OWN writes echoing back once Firestore acknowledges them —
-  // naively applying every event to local state would re-trigger the debounced write effect
-  // below, which writes again, which echoes again, forever. The fix is a content-equality
-  // check: `merged` and `prev` are both always built via the same `{...DEFAULTS, ...x}` spread
-  // (see loadLocal below too), so they always land on the same canonical key order and a plain
-  // JSON.stringify comparison is safe — when an echo's content matches what's already local,
-  // the functional setStateRaw returns `prev` unchanged, so React keeps the same object
-  // reference and nothing downstream re-fires. A genuine external change (different content)
-  // still applies normally.
+  // Uses mergeAppState rather than a blind overwrite — see its doc comment in appState.ts.
+  // In short: a plain "cloud replaces local" apply is lossy whenever local has a change the
+  // cloud hasn't caught up on yet (closed the tab before the debounced write landed, was
+  // offline, etc.) — exactly what caused a saved session to vanish the next day. Merging by
+  // identity means a real external change (or our own write echoing back) still applies
+  // normally, but nothing gets silently dropped either way.
+  //
+  // The content-equality check below is what stops the echo-loop: onSnapshot also fires for
+  // our OWN writes once Firestore acknowledges them, and naively applying every event would
+  // re-trigger the debounced write effect, which writes again, which echoes again, forever.
+  // `merged` and `prev` are always built through the same canonical field order (mergeAppState
+  // spreads DEFAULTS-shaped objects), so a plain JSON.stringify comparison is safe — when an
+  // echo's content matches what's already local, returning `prev` keeps the same object
+  // reference and nothing downstream re-fires.
   useEffect(() => {
     if (!user || !db) return
     const ref = doc(db!, 'users', user.uid, 'state', 'app')
     const unsub = onSnapshot(ref, (snap) => {
       if (!snap.exists()) {
-        setDoc(ref, state).catch(() => {})
+        setDoc(ref, state).catch((err) => console.error('Initial cloud write failed:', err))
         return
       }
-      const merged = { ...structuredClone(DEFAULTS), ...(snap.data() as Partial<AppState>) }
+      const cloud = { ...structuredClone(DEFAULTS), ...(snap.data() as Partial<AppState>) }
       setStateRaw((prev) => {
+        const merged = mergeAppState(prev, cloud)
         if (JSON.stringify(merged) === JSON.stringify(prev)) return prev
         saveLocal(merged) // keep the offline cache current too, e.g. a server-pushed weekly review
         return merged
@@ -78,7 +84,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (syncTimer.current) clearTimeout(syncTimer.current)
     syncTimer.current = setTimeout(() => {
       const ref = doc(db!, 'users', user.uid, 'state', 'app')
-      setDoc(ref, state, { merge: true }).catch(() => {})
+      setDoc(ref, state, { merge: true }).catch((err) => console.error('Cloud sync failed:', err))
     }, 800)
     return () => {
       if (syncTimer.current) clearTimeout(syncTimer.current)

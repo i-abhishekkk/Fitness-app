@@ -253,7 +253,7 @@ function LiftsView() {
 
   const exerciseNames = useMemo(() => {
     const set = new Set<string>()
-    state.sessions.forEach((s) => s.exercises.forEach((e) => e.raw && set.add(e.name)))
+    state.sessions.forEach((s) => s.exercises.forEach((e) => e.raw?.length && set.add(e.name)))
     return Array.from(set).sort()
   }, [state.sessions])
 
@@ -264,15 +264,18 @@ function LiftsView() {
 
   const points = useMemo(() => {
     return state.sessions
-      .filter((s) => s.exercises.some((e) => e.name === selected && e.raw))
+      .filter((s) => s.exercises.some((e) => e.name === selected && e.raw?.length))
       .map((s) => {
         const ex = s.exercises.find((e) => e.name === selected)!
-        const { sets, reps, weightKg } = ex.raw!
+        const sets = ex.raw!
+        // e1RM takes the single best set (the one that estimates the highest max) — that's what
+        // a strength trend should track, not an average across a warmup-to-topset spread.
+        // Volume sums every set actually done that session.
         return {
           rawDate: s.date,
           date: new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          e1rm: Math.round(estimate1RM(weightKg, reps) * 10) / 10,
-          volume: sets * reps * weightKg,
+          e1rm: Math.round(Math.max(...sets.map((set) => estimate1RM(set.weightKg, set.reps))) * 10) / 10,
+          volume: sets.reduce((sum, set) => sum + set.reps * set.weightKg, 0),
         }
       })
       .sort((a, b) => new Date(a.rawDate).getTime() - new Date(b.rawDate).getTime())

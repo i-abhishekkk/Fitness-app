@@ -5,6 +5,7 @@ import { GlassCard, SectionTitle, ProgressBar, TextField } from '../components/u
 import { CountUp } from '../components/CountUp'
 import { CheckIcon, DropletIcon, FootprintsIcon, PillIcon, BoltIcon, SparklesIcon, BotIcon } from '../components/icons'
 import { useStore } from '../store/StoreContext'
+import { pushActivity } from '../store/appState'
 import { haptic } from '../lib/haptics'
 import {
   AURA_TARGETS,
@@ -59,19 +60,29 @@ export default function Today() {
 
   const toggleCheck = (id: string) => {
     haptic()
+    const wasDone = !!state.checklist[id]
     setState((s) => ({ ...s, checklist: { ...s.checklist, [id]: !s.checklist[id] } }))
+    if (!wasDone) {
+      const item = items.find((i) => i.id === id)
+      if (item) pushActivity(setState, '✅', item.text)
+    }
   }
 
   const resetChecklist = () => setState((s) => ({ ...s, checklist: {} }))
 
   const toggleWaterCup = (i: number) => {
     haptic(6)
-    setState((s) => ({ ...s, water: s.water === i + 1 ? i : i + 1 }))
+    const next = state.water === i + 1 ? i : i + 1
+    setState((s) => ({ ...s, water: next }))
+    if (next > state.water) pushActivity(setState, '💧', `Logged water — ${((next * 250) / 1000).toFixed(2)}L (${next} cup${next !== 1 ? 's' : ''} today)`)
   }
 
   const logSteps = () => {
     const n = parseInt(stepsInput, 10)
-    if (!Number.isNaN(n) && n >= 0) setState((s) => ({ ...s, steps: n }))
+    if (!Number.isNaN(n) && n >= 0) {
+      setState((s) => ({ ...s, steps: n }))
+      pushActivity(setState, '👟', `Logged ${n.toLocaleString()} steps`)
+    }
     setStepsInput('')
   }
 

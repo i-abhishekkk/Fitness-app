@@ -154,8 +154,11 @@ function buildWeeklySummary(data: Record<string, unknown>, now: Date): string {
         const exercises = Array.isArray(s.exercises)
           ? s.exercises
               .map((e: any) => {
-                const r = e?.raw
-                return r ? `${e.name} (${r.sets}x${r.reps} @ ${r.weightKg}kg${r.rpe ? `, RPE ${r.rpe}` : ''})` : e?.name
+                const sets = Array.isArray(e?.raw) ? e.raw : null
+                const detail = sets?.length
+                  ? sets.map((set: any) => `${set.weightKg}kg×${set.reps}${set.rpe ? ` RPE${set.rpe}` : ''}`).join(', ')
+                  : null
+                return detail ? `${e.name} (${detail})` : e?.name
               })
               .filter(Boolean)
               .join(', ')
