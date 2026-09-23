@@ -77,6 +77,19 @@ function saveDraft(d: LogDraft) {
     // storage full/unavailable — draft just won't survive a reload, not fatal
   }
 }
+/** Weight field accepts plain numbers ("62.5") or bodyweight notation ("BW", "BW+10",
+ *  "BW-5") for exercises with no external load — parses to a number for the e1RM/volume
+ *  graphs (0 for plain "BW"), or null if it's neither (that set is skipped from the graphs
+ *  but still shown, verbatim, in the session's text detail). */
+function parseWeight(text: string): number | null {
+  const t = text.trim()
+  if (!t) return null
+  if (/^-?\d+(\.\d+)?$/.test(t)) return Number(t)
+  const bw = t.match(/^bw\s*([+-]\s*\d+(\.\d+)?)?$/i)
+  if (bw) return bw[1] ? Number(bw[1].replace(/\s+/g, '')) : 0
+  return null
+}
+
 function clearDraft() {
   try {
     localStorage.removeItem(DRAFT_KEY)
@@ -140,9 +153,17 @@ function LogSession() {
       .map((name) => {
         const sets = (logged[name] ?? []).filter((s) => s.reps && s.weight)
         if (!sets.length) return null
-        const raw: SetLog[] = sets.map((s) => ({ reps: Number(s.reps), weightKg: Number(s.weight), rpe: s.rpe ? Number(s.rpe) : undefined }))
-        const detail = raw.map((s) => `${s.weightKg}kg×${s.reps}${s.rpe ? ` @RPE${s.rpe}` : ''}`).join(', ')
-        const entry: SessionExercise = { name, sets: `${raw.length} set${raw.length > 1 ? 's' : ''}: ${detail}`, raw }
+        // Detail text always shows exactly what was typed (so "BW" or "BW+10" reads back
+        // correctly); `raw` only gets a numeric weightKg for sets where the text actually
+        // parsed to one — a set logged as plain "BW" still shows in history but is left out
+        // of the e1RM/volume graphs rather than being counted as 0kg.
+        const detail = sets.map((s) => `${s.weight}×${s.reps}${s.rpe ? ` @RPE${s.rpe}` : ''}`).join(', ')
+        const raw: SetLog[] = []
+        for (const s of sets) {
+          const weightKg = parseWeight(s.weight)
+          if (weightKg !== null) raw.push({ reps: Number(s.reps), weightKg, rpe: s.rpe ? Number(s.rpe) : undefined })
+        }
+        const entry: SessionExercise = { name, sets: `${sets.length} set${sets.length > 1 ? 's' : ''}: ${detail}`, ...(raw.length ? { raw } : {}) }
         return entry
       })
       .filter(Boolean) as SessionEntry['exercises']
@@ -205,6 +226,10 @@ function LogSession() {
               </div>
             )}
           </div>
+          <div className="mb-3 text-[10px] leading-relaxed text-[var(--color-text-3)]">
+            Bodyweight movement? Type <span className="font-[var(--font-mono)] text-[var(--color-text-2)]">BW</span> in the weight field, or{' '}
+            <span className="font-[var(--font-mono)] text-[var(--color-text-2)]">BW+10</span> for added weight.
+          </div>
           <div className="mb-4 space-y-2.5">
             {listedExercises.map((name) => {
               const sets = setsFor(name)
@@ -236,8 +261,9 @@ function LogSession() {
                             <input
                               value={s.weight}
                               onChange={(e) => updateSet(name, i, 'weight', e.target.value)}
-                              type="number"
-                              placeholder="kg"
+                              type="text"
+                              inputMode="decimal"
+                              placeholder="kg / BW"
                               className="w-full min-w-0 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-[11.5px] outline-none focus:border-[var(--color-accent)]"
                             />
                             <input

@@ -142,11 +142,20 @@ export function pushActivity(setState: SetStateFn, icon: string, label: string) 
   }))
 }
 
-function dedupeById<T extends { id: string }>(a: T[], b: T[]): T[] {
+// `order` must match how each field is conventionally stored elsewhere in the app: sessions
+// and activityLog are always prepended (newest-first — WorkoutHistory and buildCoachContext's
+// recentSessions both read the array directly, no re-sort), while food is appended
+// (oldest-first, like weights/sleep/measurements below). Sorting sessions ascending here was
+// the actual cause of a saved session appearing to "vanish" — it hadn't, it just got sorted to
+// the bottom of a list nobody scrolled to the end of.
+function dedupeById<T extends { id: string }>(a: T[], b: T[], order: 'asc' | 'desc' = 'asc'): T[] {
   const map = new Map<string, T>()
   for (const x of a) map.set(x.id, x)
   for (const x of b) if (!map.has(x.id)) map.set(x.id, x)
-  return Array.from(map.values()).sort((x, y) => new Date((x as unknown as { date: string }).date).getTime() - new Date((y as unknown as { date: string }).date).getTime())
+  const sign = order === 'asc' ? 1 : -1
+  return Array.from(map.values()).sort(
+    (x, y) => sign * (new Date((x as unknown as { date: string }).date).getTime() - new Date((y as unknown as { date: string }).date).getTime()),
+  )
 }
 function dedupeByValue<T extends { date: string }>(a: T[], b: T[]): T[] {
   const seen = new Set(a.map((x) => JSON.stringify(x)))
@@ -181,9 +190,9 @@ export function mergeAppState(a: AppState, b: AppState): AppState {
   return {
     ...b,
     ...a, // local scalars/maps (today's water, checklist, habits, etc.) take precedence
-    sessions: dedupeById(a.sessions, b.sessions),
+    sessions: dedupeById(a.sessions, b.sessions, 'desc'),
     food: dedupeById(a.food, b.food),
-    activityLog: dedupeById(a.activityLog, b.activityLog),
+    activityLog: dedupeById(a.activityLog, b.activityLog, 'desc'),
     weights: dedupeByValue(a.weights, b.weights),
     sleep: dedupeByValue(a.sleep, b.sleep),
     measurements: dedupeByValue(a.measurements, b.measurements),
