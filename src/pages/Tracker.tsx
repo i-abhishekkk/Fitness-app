@@ -262,7 +262,8 @@ function LogSession() {
                               value={s.weight}
                               onChange={(e) => updateSet(name, i, 'weight', e.target.value)}
                               type="text"
-                              inputMode="decimal"
+                              inputMode="text"
+                              autoCapitalize="characters"
                               placeholder="kg / BW"
                               className="w-full min-w-0 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-[11.5px] outline-none focus:border-[var(--color-accent)]"
                             />

@@ -47,6 +47,7 @@ export const REMINDERS: ReminderEntry[] = [
   { hour: 8, minute: 15, title: '💊 Creatine', body: 'Take creatine now, on your way to the gym.' },
   { hour: 10, minute: 0, title: '💊 Multivitamin + Fish Oil', body: 'Take both right after your post-workout meal.' },
   { hour: 14, minute: 0, title: '💊 Vitamin B12', body: 'Take B12 now, after your afternoon meal.' },
+  { hour: 22, minute: 15, title: '💊 Ashwagandha', body: 'Take ashwagandha now — 15 min before magnesium.' },
   { hour: 22, minute: 30, title: '💊 Magnesium (ZMA)', body: 'Take magnesium now — 30 min before sleep.' },
   { hour: 14, minute: 15, days: SUNDAY, title: '💊 Vitamin D3', body: 'Take D3 now, right after Sunday lunch.' },
 

@@ -212,6 +212,7 @@ export const SUPPS: Supp[] = [
   { key: 'multivitamin', name: 'Multivitamin', dose: '1 tablet', timing: '10:00 AM · right after post-workout meal', days: 'Daily', color: 'var(--color-teal)' },
   { key: 'omega', name: 'Omega-3 Fish Oil', dose: '1–2g EPA+DHA', timing: '10:00 AM · right after post-workout meal', days: 'Daily', color: 'var(--color-green)' },
   { key: 'b12', name: 'Vitamin B12', dose: '1000mcg methylcobalamin', timing: '2:00 PM · after afternoon meal', days: 'Daily', color: 'var(--color-accent)' },
+  { key: 'ashwagandha', name: 'Ashwagandha (KSM-66)', dose: '600mg', timing: '10:15 PM · 15 min before magnesium', days: 'Daily', color: 'var(--color-purple)' },
   { key: 'zma', name: 'Magnesium (ZMA)', dose: '25mg Zn + 200mg Mg', timing: '10:30 PM · 30 min before sleep', days: 'Daily', color: 'var(--color-purple)' },
   { key: 'd3', name: 'Vitamin D3 + K2', dose: '2000–4000 IU', timing: '2:15 PM · Sunday, post-lunch', days: 'Weekly (Sunday)', color: 'var(--color-amber)' },
 ]
