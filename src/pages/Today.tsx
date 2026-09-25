@@ -1,16 +1,14 @@
 import { motion } from 'motion/react'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { GlassCard, SectionTitle, ProgressBar, TextField } from '../components/ui'
+import { GlassCard, SectionTitle, ProgressBar, TextField, Button } from '../components/ui'
 import { CountUp } from '../components/CountUp'
-import { CheckIcon, DropletIcon, FootprintsIcon, PillIcon, BoltIcon, SparklesIcon, BotIcon } from '../components/icons'
+import { CheckIcon, DropletIcon, FootprintsIcon, BoltIcon, SparklesIcon, BotIcon, MoonIcon } from '../components/icons'
 import { useStore } from '../store/StoreContext'
 import { pushActivity } from '../store/appState'
 import { haptic } from '../lib/haptics'
 import {
   AURA_TARGETS,
   CHECKLISTS,
-  SUPPS,
   WATER_TARGET_L,
   STEPS_TARGET,
   getTodayCfg,
@@ -223,6 +221,7 @@ export default function Today() {
           <div className="mt-2.5 flex gap-1.5">
             <TextField
               type="number"
+              inputMode="numeric"
               value={stepsInput}
               onChange={(e) => setStepsInput(e.target.value)}
               placeholder="Steps"
@@ -235,21 +234,45 @@ export default function Today() {
         </GlassCard>
       </div>
 
-      {/* SUPPLEMENTS — full toggle list lives in Diet > Supps only, this is just a status link */}
-      <Link to="/diet">
-        <GlassCard glow="var(--color-amber)" className="flex items-center gap-3">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl" style={{ background: 'var(--color-amber-dim)', color: 'var(--color-amber)' }}>
-            <PillIcon width={16} height={16} />
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="text-[12.5px] font-bold">Supplements</div>
-            <div className="text-[10.5px] text-[var(--color-text-3)]">
-              {SUPPS.filter((s) => state.supps[s.key]).length}/{SUPPS.length} taken today · manage in Diet
-            </div>
-          </div>
-          <span className="text-[var(--color-text-3)]">→</span>
-        </GlassCard>
-      </Link>
+      <SleepCard />
     </div>
+  )
+}
+
+function SleepCard() {
+  const { state, setState } = useStore()
+  const [hrs, setHrs] = useState('')
+  const [qual, setQual] = useState('')
+  const last7 = state.sleep.slice(-7)
+  const avg = last7.length ? Number((last7.reduce((a, b) => a + b.hours, 0) / last7.length).toFixed(1)) : 0
+  const lastNight = state.sleep.at(-1)?.hours ?? 0
+
+  const log = () => {
+    const h = parseFloat(hrs)
+    if (Number.isNaN(h)) return
+    setState((s) => ({ ...s, sleep: [...s.sleep, { date: new Date().toISOString(), hours: h }] }))
+    setHrs('')
+    setQual('')
+  }
+
+  return (
+    <GlassCard glow="var(--color-purple)">
+      <SectionTitle icon={<MoonIcon width={14} height={14} />} color="var(--color-purple)">Sleep</SectionTitle>
+      <div className="mb-4 grid grid-cols-2 gap-2.5">
+        <div className="rounded-xl bg-white/[0.03] p-3 text-center">
+          <div className="font-[var(--font-mono)] text-xl font-extrabold"><CountUp value={avg} decimals={1} /></div>
+          <div className="mt-0.5 text-[9px] uppercase tracking-wide text-[var(--color-text-3)]">7-day avg</div>
+        </div>
+        <div className="rounded-xl bg-white/[0.03] p-3 text-center">
+          <div className="font-[var(--font-mono)] text-xl font-extrabold"><CountUp value={lastNight} decimals={1} /></div>
+          <div className="mt-0.5 text-[9px] uppercase tracking-wide text-[var(--color-text-3)]">last night</div>
+        </div>
+      </div>
+      <div className="mb-4 grid grid-cols-2 gap-2.5">
+        <TextField type="number" inputMode="decimal" label="Hours slept" value={hrs} onChange={(e) => setHrs(e.target.value)} />
+        <TextField type="number" inputMode="numeric" label="Quality (1-5)" value={qual} onChange={(e) => setQual(e.target.value)} />
+      </div>
+      <Button full onClick={log}>Log Sleep</Button>
+    </GlassCard>
   )
 }

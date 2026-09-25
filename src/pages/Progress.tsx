@@ -102,7 +102,7 @@ function BodyView() {
           <div className="text-[12px] text-[var(--color-text-3)]">Add your height below to see BMI.</div>
         )}
         <div className="mt-3 flex gap-2">
-          <TextField type="number" value={heightInput} onChange={(e) => setHeightInput(e.target.value)} placeholder="Height (cm)" />
+          <TextField type="number" inputMode="decimal" value={heightInput} onChange={(e) => setHeightInput(e.target.value)} placeholder="Height (cm)" />
           <Button variant="secondary" color="var(--color-blue)" onClick={saveHeight}>Save</Button>
         </div>
       </GlassCard>
@@ -114,6 +114,7 @@ function BodyView() {
             <TextField
               key={f.key}
               type="number"
+              inputMode="decimal"
               value={fields[f.key] ?? ''}
               onChange={(e) => setFields((s) => ({ ...s, [f.key]: e.target.value }))}
               placeholder={f.label}
@@ -218,7 +219,7 @@ function WeightView() {
       <GlassCard>
         <SectionTitle>Log Weight</SectionTitle>
         <div className="flex gap-2">
-          <TextField type="number" step="0.1" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Today's weight (kg)" />
+          <TextField type="number" inputMode="decimal" step="0.1" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Today's weight (kg)" />
           <button onClick={logWeight} className="shrink-0 rounded-xl border border-white/10 px-4 text-[11.5px] font-semibold text-[var(--color-text-2)] transition-colors hover:bg-white/5 active:scale-95">
             Log
           </button>

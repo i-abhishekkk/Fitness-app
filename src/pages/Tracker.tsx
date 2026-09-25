@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import type * as XLSXNS from 'xlsx'
 import { motion } from 'motion/react'
 import { GlassCard, SectionTitle, Segmented, Callout, TextField, TextAreaField, SelectField, Button, Toggle } from '../components/ui'
-import { CountUp } from '../components/CountUp'
-import { PlusIcon, XIcon, MoonIcon, TargetIcon, DownloadIcon, TrashIcon, CheckIcon, BellIcon, ChevronDownIcon } from '../components/icons'
+import { PlusIcon, XIcon, TargetIcon, DownloadIcon, TrashIcon, CheckIcon, BellIcon, ChevronDownIcon } from '../components/icons'
 import { useStore } from '../store/StoreContext'
 import { enablePush, disablePush } from '../lib/firebase'
 import { haptic } from '../lib/haptics'
@@ -12,7 +11,7 @@ import { SPLIT } from '../data/workouts'
 import { getCurrentMesoWeek } from '../data/periodization'
 import { pushActivity, type SessionEntry, type SessionExercise, type SetLog } from '../store/appState'
 
-type Top = 'session' | 'history' | 'sleep' | 'habits' | 'data'
+type Top = 'session' | 'history' | 'habits' | 'data'
 
 const DAY_OPTIONS = SPLIT.map((d) => `${d.dow} — ${d.title}`)
 const EXTRA_OPTION = 'Skill Practice Only (not on the split)'
@@ -27,14 +26,12 @@ export default function Tracker() {
         options={[
           { value: 'session', label: 'Log' },
           { value: 'history', label: 'History' },
-          { value: 'sleep', label: 'Sleep' },
           { value: 'habits', label: 'Habits' },
           { value: 'data', label: 'Data' },
         ]}
       />
       {top === 'session' && <LogSession />}
       {top === 'history' && <History />}
-      {top === 'sleep' && <Sleep />}
       {top === 'habits' && <Habits />}
       {top === 'data' && <DataPanel />}
     </div>
@@ -206,12 +203,12 @@ function LogSession() {
         Skills this session → auto-updates Aura
       </div>
       <div className="mb-4 grid grid-cols-2 gap-2.5">
-        <TextField type="number" label="HS Hold (sec)" value={hs} onChange={(e) => setHs(e.target.value)} />
-        <TextField type="number" label="Pull-ups (reps)" value={pu} onChange={(e) => setPu(e.target.value)} />
-        <TextField type="number" label="Dips (reps)" value={mu} onChange={(e) => setMu(e.target.value)} />
-        <TextField type="number" label="Stair sets done" value={cv} onChange={(e) => setCv(e.target.value)} />
-        <TextField type="number" label="C2B Pull-ups (reps)" value={c2b} onChange={(e) => setC2b(e.target.value)} />
-        <TextField type="number" label="Scapular Pull-ups (reps)" value={scap} onChange={(e) => setScap(e.target.value)} />
+        <TextField type="number" inputMode="numeric" label="HS Hold (sec)" value={hs} onChange={(e) => setHs(e.target.value)} />
+        <TextField type="number" inputMode="numeric" label="Pull-ups (reps)" value={pu} onChange={(e) => setPu(e.target.value)} />
+        <TextField type="number" inputMode="numeric" label="Dips (reps)" value={mu} onChange={(e) => setMu(e.target.value)} />
+        <TextField type="number" inputMode="numeric" label="Stair sets done" value={cv} onChange={(e) => setCv(e.target.value)} />
+        <TextField type="number" inputMode="numeric" label="C2B Pull-ups (reps)" value={c2b} onChange={(e) => setC2b(e.target.value)} />
+        <TextField type="number" inputMode="numeric" label="Scapular Pull-ups (reps)" value={scap} onChange={(e) => setScap(e.target.value)} />
       </div>
 
       {listedExercises.length > 0 && (
@@ -255,6 +252,7 @@ function LogSession() {
                               value={s.reps}
                               onChange={(e) => updateSet(name, i, 'reps', e.target.value)}
                               type="number"
+                              inputMode="numeric"
                               placeholder="Reps"
                               className="w-full min-w-0 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-[11.5px] outline-none focus:border-[var(--color-accent)]"
                             />
@@ -271,6 +269,7 @@ function LogSession() {
                               value={s.rpe}
                               onChange={(e) => updateSet(name, i, 'rpe', e.target.value)}
                               type="number"
+                              inputMode="numeric"
                               min={1}
                               max={10}
                               placeholder="RPE"
@@ -366,23 +365,89 @@ function History() {
   )
 }
 
+type RangeFilter = '7' | '30' | '90' | 'all'
+const RANGE_OPTIONS: { value: RangeFilter; label: string }[] = [
+  { value: '7', label: '7D' },
+  { value: '30', label: '30D' },
+  { value: '90', label: '90D' },
+  { value: 'all', label: 'All' },
+]
+
+/** Shared by both history tabs. Defaults to the last 7 days; a rolling range (30/90/All) or a
+ *  specific month (native <input type="month">, which takes precedence when set) both widen it. */
+function useDateFilter() {
+  const [range, setRange] = useState<RangeFilter>('7')
+  const [month, setMonth] = useState('')
+  const inRange = (dateStr: string) => {
+    if (month) return dateStr.slice(0, 7) === month
+    if (range === 'all') return true
+    return Date.now() - new Date(dateStr).getTime() <= Number(range) * 86_400_000
+  }
+  return { range, setRange, month, setMonth, inRange }
+}
+
+function HistoryFilterBar({
+  range,
+  setRange,
+  month,
+  setMonth,
+}: {
+  range: RangeFilter
+  setRange: (r: RangeFilter) => void
+  month: string
+  setMonth: (m: string) => void
+}) {
+  return (
+    <div className="mb-3 flex items-center gap-2">
+      <div className="min-w-0 flex-1">
+        <Segmented
+          value={month ? ('' as RangeFilter) : range}
+          onChange={(v) => {
+            setRange(v)
+            setMonth('')
+          }}
+          options={RANGE_OPTIONS}
+        />
+      </div>
+      <div className="relative shrink-0">
+        <input
+          type="month"
+          value={month}
+          onChange={(e) => setMonth(e.target.value)}
+          max={new Date().toISOString().slice(0, 7)}
+          className="w-[124px] rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2 text-[11px] text-[var(--color-text-2)] outline-none focus:border-[var(--color-accent)]"
+          style={{ colorScheme: 'dark' }}
+        />
+      </div>
+      {month && (
+        <button onClick={() => setMonth('')} className="shrink-0 text-[var(--color-text-3)] transition-colors hover:text-[var(--color-accent)]">
+          <XIcon width={14} height={14} />
+        </button>
+      )}
+    </div>
+  )
+}
+
 function WorkoutHistory() {
   const { state, setState } = useStore()
+  const { range, setRange, month, setMonth, inRange } = useDateFilter()
+  const filtered = state.sessions.filter((s) => inRange(s.date))
   const del = (id: string) => setState((s) => ({ ...s, sessions: s.sessions.filter((x) => x.id !== id) }))
   return (
     <GlassCard>
-      <SectionTitle trailing={<span className="font-[var(--font-mono)] text-[10px] text-[var(--color-text-3)]">{state.sessions.length} total</span>}>
+      <SectionTitle trailing={<span className="font-[var(--font-mono)] text-[10px] text-[var(--color-text-3)]">{filtered.length} of {state.sessions.length}</span>}>
         Sessions
       </SectionTitle>
-      {state.sessions.length === 0 && (
-        <div className="py-8 text-center text-[12.5px] text-[var(--color-text-3)]">No sessions logged yet.</div>
+      <HistoryFilterBar range={range} setRange={setRange} month={month} setMonth={setMonth} />
+      {filtered.length === 0 && (
+        <div className="py-8 text-center text-[12.5px] text-[var(--color-text-3)]">No sessions in this range.</div>
       )}
-      {state.sessions.map((s, i) => (
+      {filtered.map((s, i) => (
         <motion.div
           key={s.id}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: i * 0.03 }}
+          transition={{ delay: Math.min(i, 12) * 0.03 }}
           className="border-b border-white/[0.06] py-3.5 last:border-none"
         >
           <div className="flex items-center justify-between">
@@ -413,11 +478,23 @@ interface ActivityRow {
   date: string
   icon: string
   label: string
-  source: 'food' | 'activity'
+  source: 'food' | 'activity' | 'sleep'
+}
+
+function dayLabel(dateStr: string): string {
+  const d = new Date(dateStr)
+  const today = new Date()
+  const yesterday = new Date(today)
+  yesterday.setDate(today.getDate() - 1)
+  if (d.toDateString() === today.toDateString()) return 'Today'
+  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday'
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
 }
 
 function ActivityHistory() {
   const { state, setState } = useStore()
+  const { range, setRange, month, setMonth, inRange } = useDateFilter()
+
   const combined = useMemo<ActivityRow[]>(() => {
     const foodRows: ActivityRow[] = state.food.map((f) => ({
       id: f.id,
@@ -427,79 +504,62 @@ function ActivityHistory() {
       source: 'food',
     }))
     const activityRows: ActivityRow[] = state.activityLog.map((a) => ({ id: a.id, date: a.date, icon: a.icon, label: a.label, source: 'activity' }))
-    return [...foodRows, ...activityRows].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-  }, [state.food, state.activityLog])
+    const sleepRows: ActivityRow[] = state.sleep.map((s) => ({ id: s.date, date: s.date, icon: '🌙', label: `Slept ${s.hours}h`, source: 'sleep' }))
+    return [...foodRows, ...activityRows, ...sleepRows]
+      .filter((r) => inRange(r.date))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.food, state.activityLog, state.sleep, range, month])
 
   const del = (row: ActivityRow) =>
-    setState((s) =>
-      row.source === 'food' ? { ...s, food: s.food.filter((f) => f.id !== row.id) } : { ...s, activityLog: s.activityLog.filter((a) => a.id !== row.id) },
-    )
+    setState((s) => {
+      if (row.source === 'food') return { ...s, food: s.food.filter((f) => f.id !== row.id) }
+      if (row.source === 'sleep') return { ...s, sleep: s.sleep.filter((x) => x.date !== row.date) }
+      return { ...s, activityLog: s.activityLog.filter((a) => a.id !== row.id) }
+    })
+
+  let lastLabel = ''
 
   return (
     <GlassCard>
-      <SectionTitle trailing={<span className="font-[var(--font-mono)] text-[10px] text-[var(--color-text-3)]">{combined.length} total</span>}>
+      <SectionTitle trailing={<span className="font-[var(--font-mono)] text-[10px] text-[var(--color-text-3)]">{combined.length} entries</span>}>
         Activity
       </SectionTitle>
+      <HistoryFilterBar range={range} setRange={setRange} month={month} setMonth={setMonth} />
       {combined.length === 0 && (
         <div className="py-8 text-center text-[12.5px] leading-relaxed text-[var(--color-text-3)]">
-          Nothing logged yet — water, supplements, meals, steps, and habit check-offs show up here as you log them.
+          Nothing logged in this range — water, supplements, meals, steps, sleep, and habit check-offs show up here as you log them.
         </div>
       )}
-      {combined.map((row, i) => (
-        <motion.div
-          key={`${row.source}-${row.id}`}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: Math.min(i, 12) * 0.02 }}
-          className="flex items-center gap-3 border-b border-white/[0.06] py-2.5 last:border-none"
-        >
-          <span className="shrink-0 text-base">{row.icon}</span>
-          <span className="min-w-0 flex-1">
-            <div className="truncate text-[12px] font-semibold">{row.label}</div>
-            <div className="text-[10px] text-[var(--color-text-3)]">{new Date(row.date).toLocaleString()}</div>
-          </span>
-          <button onClick={() => del(row)} className="shrink-0 text-[var(--color-text-3)] transition-colors hover:text-[var(--color-accent)]">
-            <XIcon width={13} height={13} />
-          </button>
-        </motion.div>
-      ))}
-    </GlassCard>
-  )
-}
-
-function Sleep() {
-  const { state, setState } = useStore()
-  const [hrs, setHrs] = useState('')
-  const [qual, setQual] = useState('')
-  const last7 = state.sleep.slice(-7)
-  const avg = last7.length ? Number((last7.reduce((a, b) => a + b.hours, 0) / last7.length).toFixed(1)) : 0
-  const lastNight = state.sleep.at(-1)?.hours ?? 0
-
-  const log = () => {
-    const h = parseFloat(hrs)
-    if (Number.isNaN(h)) return
-    setState((s) => ({ ...s, sleep: [...s.sleep, { date: new Date().toISOString(), hours: h }] }))
-    setHrs(''); setQual('')
-  }
-
-  return (
-    <GlassCard glow="var(--color-purple)">
-      <SectionTitle icon={<MoonIcon width={14} height={14} />} color="var(--color-purple)">Sleep Log</SectionTitle>
-      <div className="mb-4 grid grid-cols-2 gap-2.5">
-        <div className="rounded-xl bg-white/[0.03] p-3 text-center">
-          <div className="font-[var(--font-mono)] text-xl font-extrabold"><CountUp value={avg} decimals={1} /></div>
-          <div className="mt-0.5 text-[9px] uppercase tracking-wide text-[var(--color-text-3)]">7-day avg</div>
-        </div>
-        <div className="rounded-xl bg-white/[0.03] p-3 text-center">
-          <div className="font-[var(--font-mono)] text-xl font-extrabold"><CountUp value={lastNight} decimals={1} /></div>
-          <div className="mt-0.5 text-[9px] uppercase tracking-wide text-[var(--color-text-3)]">last night</div>
-        </div>
-      </div>
-      <div className="mb-4 grid grid-cols-2 gap-2.5">
-        <TextField type="number" label="Hours slept" value={hrs} onChange={(e) => setHrs(e.target.value)} />
-        <TextField type="number" label="Quality (1-5)" value={qual} onChange={(e) => setQual(e.target.value)} />
-      </div>
-      <Button full onClick={log}>Log Sleep</Button>
+      {combined.map((row, i) => {
+        const label = dayLabel(row.date)
+        const showHeader = label !== lastLabel
+        lastLabel = label
+        return (
+          <div key={`${row.source}-${row.id}`}>
+            {showHeader && (
+              <div className={`mb-1.5 font-[var(--font-mono)] text-[9.5px] font-bold uppercase tracking-[1.5px] text-[var(--color-text-3)] ${i > 0 ? 'mt-4' : ''}`}>
+                {label}
+              </div>
+            )}
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: Math.min(i, 12) * 0.02 }}
+              className="flex items-center gap-3 border-b border-white/[0.06] py-2.5 last:border-none"
+            >
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/[0.04] text-base">{row.icon}</span>
+              <span className="min-w-0 flex-1">
+                <div className="truncate text-[12px] font-semibold">{row.label}</div>
+                <div className="text-[10px] text-[var(--color-text-3)]">{new Date(row.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
+              </span>
+              <button onClick={() => del(row)} className="shrink-0 text-[var(--color-text-3)] transition-colors hover:text-[var(--color-accent)]">
+                <XIcon width={13} height={13} />
+              </button>
+            </motion.div>
+          </div>
+        )
+      })}
     </GlassCard>
   )
 }

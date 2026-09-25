@@ -88,6 +88,10 @@ export interface AppState {
   // generateWeeklyReview. Only picked up client-side on the next fresh sign-in load (same
   // limitation as the `push` field above), not live-synced.
   weeklyReview: { text: string; generatedAt: string } | null
+  // The logical-day key (see getLogicalDateKey) as of the last automatic daily reset — lets
+  // StoreContext's reset check tell "already reset today" from "a new day started" without
+  // re-zeroing on every render.
+  lastResetDate: string | null
 }
 
 export const DEFAULTS: AppState = {
@@ -109,6 +113,37 @@ export const DEFAULTS: AppState = {
   aura: { hs: 0, mu: 0, pu: 0, cv: 0, hsRaw: 0, muRaw: 0, puRaw: 0, cvRaw: 0, c2bRaw: 0, scapRaw: 0 },
   push: { enabled: false, token: null },
   weeklyReview: null,
+  lastResetDate: null,
+}
+
+/** The app's "day" rolls over at 3 AM local time, not midnight — a late-night session or
+ *  post-midnight last meal shouldn't already count against tomorrow's log. Shifting the clock
+ *  back 3 hours before reading the calendar date is what makes 12:30 AM still read as
+ *  "yesterday". Used for the daily auto-reset and for what counts as "today" in Diet's food log. */
+export function getLogicalDateKey(d: Date = new Date()): string {
+  const shifted = new Date(d.getTime() - 3 * 60 * 60 * 1000)
+  const y = shifted.getFullYear()
+  const m = String(shifted.getMonth() + 1).padStart(2, '0')
+  const day = String(shifted.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+/** Zeroes the fields that represent "today's" tracking — water, steps, today's checklist,
+ *  supplement toggles, habits, and the running macro counter. Does NOT touch any historical
+ *  array (sessions, food, weights, sleep, measurements, activityLog) — those are dated records
+ *  that naturally stop showing under "today" once the logical day rolls over; deleting them
+ *  here would just be destroying history for no reason. */
+export function resetDailyFields(s: AppState, today: string): AppState {
+  return {
+    ...s,
+    water: 0,
+    steps: 0,
+    checklist: {},
+    supps: {},
+    habits: {},
+    macros: { p: 0, c: 0, f: 0, k: 0 },
+    lastResetDate: today,
+  }
 }
 
 const STORAGE_KEY = 'gm5'

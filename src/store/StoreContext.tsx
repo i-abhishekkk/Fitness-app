@@ -2,7 +2,9 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import type { User } from 'firebase/auth'
 import { doc, onSnapshot, setDoc } from 'firebase/firestore'
 import { auth, db, firebaseEnabled, watchAuth, watchForegroundPush } from '../lib/firebase'
-import { DEFAULTS, loadLocal, saveLocal, mergeAppState, type AppState } from './appState'
+import { DEFAULTS, loadLocal, saveLocal, mergeAppState, getLogicalDateKey, resetDailyFields, type AppState } from './appState'
+
+const RESET_CHECK_INTERVAL_MS = 5 * 60 * 1000
 
 interface StoreCtx {
   state: AppState
@@ -31,6 +33,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   // Show a notification for push messages that arrive while the app is in the foreground
   useEffect(() => watchForegroundPush(), [])
+
+  // Daily auto-reset — water, steps, today's checklist, supplement toggles, habits, and the
+  // running macro counter all zero out at 3 AM local time (see getLogicalDateKey) instead of
+  // requiring the manual "Reset" buttons. Runs on mount (the common case: a fresh app open the
+  // next day) and every few minutes after that in case the app is ever left open across the
+  // 3 AM boundary. Pure local-state check, no network/auth dependency, so it works offline too.
+  useEffect(() => {
+    const checkReset = () => {
+      const today = getLogicalDateKey()
+      setStateRaw((prev) => {
+        if (prev.lastResetDate === today) return prev
+        const next = resetDailyFields(prev, today)
+        saveLocal(next)
+        return next
+      })
+    }
+    checkReset()
+    const interval = setInterval(checkReset, RESET_CHECK_INTERVAL_MS)
+    return () => clearInterval(interval)
+  }, [])
 
   // Live cloud sync — a persistent listener (not a one-time fetch) so a change written from
   // elsewhere (another device, or the Worker's Sunday weekly-review job) reaches this open
